@@ -99,16 +99,35 @@ def plot_imshow(x, y, z):
     return
 
 
-def plot_energy_spectrum(evals, evecs, fock_trunc):
+def clean_spectrum(evals, evecs, m=3, threshold=1e-3):
+    """
+    Remove from the list the eigenvectors that have too much population in the last
+    ::m:: Fock states.
+    """
+
+    clean_evals = []
+    clean_evecs = []
+
+    for i in range(len(evecs)):
+        evecs_data = [float(np.absolute(x) ** 2) for x in evecs[i]]
+        bad_state_pop = sum(evecs_data[-m:])
+        if bad_state_pop < threshold:
+            clean_evals.append(evals[i])
+            clean_evecs.append(evecs[i])
+
+    return np.array(clean_evals), np.array(clean_evecs)
+
+
+def add_spectrum_plot(ax, evals, evecs, fock_trunc):
     """
     Adapted from https://stackoverflow.com/questions/35210337/can-i-plot-several-histograms-in-3d/35225919
     """
 
+    # calculate probability of finding eigenvec in each Fock state
     evecs_data = [[float(np.absolute(x) ** 2) for x in evec] for evec in evecs]
+    # get eigenfrequencies in GHz and remove offset
     evals_data = np.real(evals - evals[0]) / 1e9
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-    print(evals)
+
     for energy, eigenstate in zip(evals_data, evecs_data):
         fock_list = list(range(fock_trunc))
         eigenstate = eigenstate[:fock_trunc]
@@ -118,6 +137,42 @@ def plot_energy_spectrum(evals, evecs, fock_trunc):
     ax.set_ylabel("Eigenfrequency (GHz)")
     ax.set_zlabel("P(N)")
 
-    plt.show()
+    return
+
+
+def add_energy_diagram_plot(ax, evals, label=None):
+
+    evals_data = np.real(evals - evals[0]) / 1e9
+    ax.scatter(list(range(len(evals_data))), evals_data, label=label)
+
+    ax.set_xlabel("Index")
+    ax.set_ylabel("Eigenfrequency (GHz)")
+
+    return
+
+
+def add_transition_energies_plot(ax, evals, label=None):
+
+    evals_data = np.real(evals - evals[0]) / 1e9
+
+    transit_energies = evals_data[1:] - evals_data[:-1]
+    ax.scatter(list(range(len(transit_energies))), transit_energies, label=label)
+
+    ax.set_xlabel("Index")
+    ax.set_ylabel("Transition energies (GHz)")
+
+    return
+
+
+def add_anharmonicity_plot(ax, evals, label=None):
+
+    evals_data = np.real(evals - evals[0]) / 1e6
+
+    transit_energies = evals_data[1:] - evals_data[:-1]
+    anharm = transit_energies[1:] - transit_energies[:-1]
+    ax.scatter(list(range(len(anharm))), anharm, label=label)
+
+    ax.set_xlabel("Index")
+    ax.set_ylabel("Anharmonicities (MHz)")
 
     return
