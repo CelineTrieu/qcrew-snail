@@ -57,7 +57,7 @@ class SNAIL:
         )
 
         # return phi_min, taylor_potential
-        Ej = 1 if norm else self.Ej * hbar
+        Ej = 1 if norm else self.Ej
 
         return phi_min, Ej * taylor_potential
 
