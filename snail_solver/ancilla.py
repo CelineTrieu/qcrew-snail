@@ -37,7 +37,7 @@ class Ancilla:
         self.cap = 1 / self.Lj / (2 * np.pi * self.freq) ** 2
         self.phi_zpf = np.sqrt(hbar / (2 * self.cap * 2 * np.pi * self.freq))
         self.phi_rzpf = 2 * np.pi * self.phi_zpf / flux_quantum  # reduced flux zpf
-        print(self.phi_rzpf, self.cap, self.Lj, self.Ej)
+        print(self.phi_rzpf, self.cap, self.Lj, self.element.Ej)
         # qutip mode operators
         self.a = qt.destroy(self.fock_trunc)
         self.ad = self.a.dag()
