@@ -15,7 +15,7 @@ class SNAIL:
     Reference: 3-Wave Mixing Josephson Dipole Element (doi: 10.1063/1.4984142)
     """
 
-    def __init__(self, Ej, n, alpha, phi_ext):
+    def __init__(self, n, alpha, phi_ext, Ej=1):
 
         self.Ej = Ej  # Hz
         self.n = n
