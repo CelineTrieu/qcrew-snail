@@ -58,7 +58,7 @@ class SNAIL:
         a2 = taylor_potential[2]
 
         Ej = 1 / 2 / (2 * np.pi * hbar * self.Lj * a2) * (flux_quantum / 2 / np.pi) ** 2
-
+        print(Ej)
         return phi_min, Ej, taylor_potential
 
     def truncated_potential(

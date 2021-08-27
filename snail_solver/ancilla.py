@@ -33,6 +33,7 @@ class Ancilla:
 
         # These should be replaced by pyEPR
         self.cap = 1 / self.element.Lj / (2 * np.pi * self.freq) ** 2
+        print(self.cap)
         self.phi_zpf = np.sqrt(hbar / (2 * self.cap * 2 * np.pi * self.freq))
         self.phi_rzpf = 2 * np.pi * self.phi_zpf / flux_quantum  # reduced flux zpf
 

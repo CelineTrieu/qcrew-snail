@@ -19,29 +19,30 @@ evals, evecs, H, a3, a4 = ancilla.calculate_spectrum()
 evals, evecs = clean_spectrum(evals, evecs)  # Remove weird states
 
 # Draw plots
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection="3d")
-# add_spectrum_plot(ax, evals, evecs, ancilla.fock_trunc)
-# plt.show()
+fig = plt.figure()
+ax = fig.add_subplot(111, projection="3d")
+add_spectrum_plot(ax, evals, evecs, ancilla.fock_trunc)
+plt.show()
 
 fig, axes = plt.subplots(2, 1, sharex=True)
 add_transition_energies_plot(axes[0], evals)
 add_anharmonicity_plot(axes[1], evals)
 plt.show()
 
+
 # Create SNAIL2
-Ej = 14.851e9 * 3  # in Hz
+Ej = 26927708963.997574  # in Hz
 n = 3
-alpha = 0.29
-phi_ext = 0.39 * 2 * np.pi
-snail = SNAIL2(Ej, n, alpha, phi_ext)
+alpha = 0.45
+phi_ext = 0.45 * 2 * np.pi
+snail2 = SNAIL2(Ej, n, alpha, phi_ext)
 
 # Create ancillas for given shunt capacitance
-cap = 97.5e-15  # shunt capacitance in F
-ancilla = Ancilla2(snail, cap)
+cap = 7.041670163066953e-14  # shunt capacitance in F
+ancilla2 = Ancilla2(snail2, cap)
 
 # get qutip hamiltonian operator
-evals, evecs, H, a3, a4 = ancilla.calculate_spectrum()
+evals, evecs, H, a3, a4 = ancilla2.calculate_spectrum()
 evals, evecs = clean_spectrum(evals, evecs)  # Remove weird states
 
 # Draw plots
