@@ -20,7 +20,7 @@ alpha_list = np.arange(0.1, 0.5, 0.01)
 phi_ext_list = np.arange(0.1 * 2 * np.pi, 0.5 * 2 * np.pi, 0.01 * 2 * np.pi)
 for alpha in alpha_list:
     for phi_ext in phi_ext_list:
-        snail = SNAIL(Ej, n, alpha, phi_ext)
+        snail = SNAIL(n, alpha, phi_ext, Ej=Ej)
         ancilla = Ancilla(snail, cap)
 
         (

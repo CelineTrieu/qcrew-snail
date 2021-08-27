@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.interpolate import approximate_taylor_polynomial
 from scipy.optimize import minimize
 from snail_solver.helper_functions import *
@@ -15,7 +14,7 @@ class SNAIL:
     Reference: 3-Wave Mixing Josephson Dipole Element (doi: 10.1063/1.4984142)
     """
 
-    def __init__(self, Ej, n, alpha, phi_ext):
+    def __init__(self, n, alpha, phi_ext, Ej=1):
 
         self.Ej = Ej  # Hz
         self.n = n
@@ -58,7 +57,7 @@ class SNAIL:
         )
 
         # return phi_min, taylor_potential
-        Ej = 1 if norm else self.Ej
+        Ej = 1 if norm else self.Ej * hbar
 
         return phi_min, Ej * taylor_potential
 

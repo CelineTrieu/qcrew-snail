@@ -4,7 +4,6 @@ The ancilla is defined by a nonlinear Josephson element shunted by a capacitance
 
 import qutip as qt
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.interpolate import approximate_taylor_polynomial
 from scipy.optimize import minimize
 from snail_solver.helper_functions import *
@@ -14,7 +13,8 @@ class Ancilla:
     def __init__(
         self,
         element,
-        cap,
+        freq,
+        Lj,
         taylor_degree=40,
         taylor_scale=9 * np.pi,
         taylor_order=None,
@@ -29,17 +29,34 @@ class Ancilla:
 
         # circuit parameters
         self.element = element
-        self.cap = cap  # F
+        self.freq = freq  # linear mode frequency in Hz
+        self.Lj = Lj  # element inductance
+        self.element.Ej = self.calculate_Ej()  # update element Ej
 
-        self.Lj = self.element.inductance(degree=self.taylor_degree)
-        self.freq = 1 / np.sqrt(self.cap * self.Lj) / 2 / np.pi  # linear mode frequency
+        # pyEPR will substitute the three lines below
+        self.cap = 1 / self.Lj / (2 * np.pi * self.freq) ** 2
         self.phi_zpf = np.sqrt(hbar / (2 * self.cap * 2 * np.pi * self.freq))
         self.phi_rzpf = 2 * np.pi * self.phi_zpf / flux_quantum  # reduced flux zpf
-
+        print(self.phi_rzpf, self.cap, self.Lj, self.Ej)
         # qutip mode operators
-        self.a = qt.destroy(fock_trunc)
+        self.a = qt.destroy(self.fock_trunc)
         self.ad = self.a.dag()
-        self.n = qt.num(fock_trunc)
+        self.n = qt.num(self.fock_trunc)
+
+    def calculate_Ej(self):
+        """
+        Returns the required Ej for a given SNAIL (external flux and alpha defined) to
+        have a given inductance Lj.
+        """
+
+        taylor_expansion = self.element.solve_expansion(degree=self.taylor_degree)[1]
+
+        # second-order term of the Taylor expansion of the SNAIL potential (normalized)
+        a2 = taylor_expansion[2]
+
+        Ej = 1 / 2 / (2 * np.pi * hbar * self.Lj * a2) * (flux_quantum / 2 / np.pi) ** 2
+
+        return Ej
 
     def calculate_hamiltonian(self, nonlinear=False):
         """
@@ -62,6 +79,7 @@ class Ancilla:
             return Hnl, a3, a4
 
         Hl = self.n * self.freq
+
         return Hl + Hnl, a3, a4
 
     def calculate_spectrum(self):
@@ -72,12 +90,6 @@ class Ancilla:
 
         H, a3, a4 = self.calculate_hamiltonian()
         evals, evecs = H.eigenstates()
-
-        print("Frequencies of lower transitions: ")
-        print("f01 =", np.absolute(evals[1] - evals[0]) / 1e9, "GHz")
-        print("f12 =", np.absolute(evals[2] - evals[1]) / 1e9, "GHz")
-        print("f23 =", np.absolute(evals[3] - evals[2]) / 1e9, "GHz")
-        print("f34 =", np.absolute(evals[4] - evals[3]) / 1e9, "GHz")
 
         return evals, evecs, H, a3, a4
 

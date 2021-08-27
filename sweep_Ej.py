@@ -9,7 +9,7 @@ Ej_list = [14.851e9 * 3, 16.851e9 * 3, 18.851e9 * 3]  # in Hz
 n = 3
 alpha = 0.29
 phi_ext = 0.41 * 2 * np.pi
-snail_list = [SNAIL(Ej, n, alpha, phi_ext) for Ej in Ej_list]
+snail_list = [SNAIL(n, alpha, phi_ext, Ej=Ej) for Ej in Ej_list]
 
 # Create ancillas for given shunt capacitance
 cap = 137.5e-15  # shunt capacitance in F

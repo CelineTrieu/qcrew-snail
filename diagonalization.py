@@ -9,15 +9,25 @@ Ej = 14.851e9 * 3  # in Hz
 n = 3
 alpha = 0.29
 phi_ext = 0.39 * 2 * np.pi
-snail = SNAIL(Ej, n, alpha, phi_ext)
+snail = SNAIL(n, alpha, phi_ext, Ej=Ej)
 
 # Create ancillas for given shunt capacitance
-cap = 97.5e-15  # shunt capacitance in F
-ancilla = Ancilla(snail, cap)
+freq = 5e9  # linear mode frequency in Hz
+Lj = 16e-9  # junction inductance in H
+ancilla = Ancilla(snail, freq, Lj)
 
 # get qutip hamiltonian operator
 evals, evecs, H, a3, a4 = ancilla.calculate_spectrum()
 evals, evecs = clean_spectrum(evals, evecs)  # Remove weird states
+
+# plot potential
+phi_list = np.arange(-4 * np.pi, 4 * np.pi, 0.01)
+import matplotlib.pyplot as plt
+
+f = ancilla.element.truncated_potential(norm=False)[0]
+plt.plot(phi_list, ancilla.element.potential(phi_list))
+plt.plot(phi_list, f(phi_list))
+plt.show()
 
 # Draw plots
 fig = plt.figure()
