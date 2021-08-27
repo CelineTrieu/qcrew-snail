@@ -1,32 +1,31 @@
-import qutip
 import numpy as np
 import matplotlib.pyplot as plt
-from SNAIL_element import SNAIL
-from ancilla import Ancilla
-from helper_functions import *
+from snail_solver.elements import SNAIL
+from snail_solver.ancilla import Ancilla
+from snail_solver.helper_functions import *
 
 # Create SNAIL
 Ej = 14.851e9 * 3  # in Hz
 n = 3
 alpha = 0.29
-phi_ext = 0.41 * 2 * np.pi
+phi_ext = 0.39 * 2 * np.pi
 snail = SNAIL(Ej, n, alpha, phi_ext)
 
-# Create ancilla for given shunt capacitance
-fock_trunc = 40  # Fock number truncation of qutip operators
-degree = 9  # Taylor order for the expansion of the SNAIL potential
-cap = 77.5e-15  # shunt capacitance in F
-ancilla = Ancilla(snail, cap, taylor_order=degree, fock_trunc=fock_trunc)
-Lj = ancilla.Lj
-freq = ancilla.freq
-phi_rzpf = ancilla.phi_rzpf
+# Create ancillas for given shunt capacitance
+cap = 97.5e-15  # shunt capacitance in F
+ancilla = Ancilla(snail, cap)
 
 # get qutip hamiltonian operator
-term_scaling = [1, 1, 1, 1, 1, 1, 1]  # Rescaling of nonlinear terms
-evals, evecs, H = ancilla.calculate_spectrum(term_scaling=term_scaling)
-plot_energy_spectrum(evals[:6], evecs[:6], 15)
+evals, evecs, H, a3, a4 = ancilla.calculate_spectrum()
+evals, evecs = clean_spectrum(evals, evecs)  # Remove weird states
 
-print("f01 ", evals[1] - evals[0])
-print("f12 ", evals[2] - evals[1])
-print("f23 ", evals[3] - evals[2])
-print("f34 ", evals[4] - evals[3])
+# Draw plots
+fig = plt.figure()
+ax = fig.add_subplot(111, projection="3d")
+add_spectrum_plot(ax, evals, evecs, ancilla.fock_trunc)
+plt.show()
+
+fig, axes = plt.subplots(2, 1, sharex=True)
+add_transition_energies_plot(axes[0], evals)
+add_anharmonicity_plot(axes[1], evals)
+plt.show()
