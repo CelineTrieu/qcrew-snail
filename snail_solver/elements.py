@@ -56,6 +56,7 @@ class SNAIL:
 
         # return phi_min, taylor_potential
         a2 = taylor_potential[2]
+
         Ej = 1 / 2 / (2 * np.pi * hbar * self.Lj * a2) * (flux_quantum / 2 / np.pi) ** 2
 
         return phi_min, Ej, taylor_potential
@@ -87,9 +88,8 @@ class SNAIL:
         if norm == False:
             taylor_potential = [Ej * a for a in taylor_potential][::-1]
 
-        a3 = taylor_potential[3]
-        a4 = taylor_potential[4]
-        print(Ej, a3 / Ej, a4 / Ej)
+        a3 = taylor_potential[3] / Ej
+        a4 = taylor_potential[4] / Ej
 
         def potential(x):
             return sum(
