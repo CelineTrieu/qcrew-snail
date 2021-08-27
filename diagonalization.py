@@ -5,16 +5,15 @@ from snail_solver.ancilla import Ancilla
 from snail_solver.helper_functions import *
 
 # Create SNAIL
-Ej = 14.851e9 * 3  # in Hz
 n = 3
-alpha = 0.29
-phi_ext = 0.39 * 2 * np.pi
-snail = SNAIL(n, alpha, phi_ext, Ej=Ej)
+alpha = 0.45
+phi_ext = 0.45 * 2 * np.pi
+Lj = 17e-9
+freq = 4.6e9
 
-# Create ancillas for given shunt capacitance
-cap = 97.5e-15  # shunt capacitance in F
-ancilla = Ancilla(snail, cap)
-
+snail = SNAIL(n, alpha, phi_ext, Lj)
+ancilla = Ancilla(snail, freq)
+print(ancilla.cap)
 # get qutip hamiltonian operator
 evals, evecs, H, a3, a4 = ancilla.calculate_spectrum()
 evals, evecs = clean_spectrum(evals, evecs)  # Remove weird states

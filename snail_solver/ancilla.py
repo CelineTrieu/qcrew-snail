@@ -14,7 +14,7 @@ class Ancilla:
     def __init__(
         self,
         element,
-        cap,
+        freq,
         taylor_degree=40,
         taylor_scale=9 * np.pi,
         taylor_order=None,
@@ -29,10 +29,10 @@ class Ancilla:
 
         # circuit parameters
         self.element = element
-        self.cap = cap  # F
+        self.freq = freq  # linear mode frequency in Hz
 
-        self.Lj = self.element.inductance(degree=self.taylor_degree)
-        self.freq = 1 / np.sqrt(self.cap * self.Lj) / 2 / np.pi  # linear mode frequency
+        # These should be replaced by pyEPR
+        self.cap = 1 / self.element.Lj / (2 * np.pi * self.freq) ** 2
         self.phi_zpf = np.sqrt(hbar / (2 * self.cap * 2 * np.pi * self.freq))
         self.phi_rzpf = 2 * np.pi * self.phi_zpf / flux_quantum  # reduced flux zpf
 
@@ -72,12 +72,6 @@ class Ancilla:
 
         H, a3, a4 = self.calculate_hamiltonian()
         evals, evecs = H.eigenstates()
-
-        print("Frequencies of lower transitions: ")
-        print("f01 =", np.absolute(evals[1] - evals[0]) / 1e9, "GHz")
-        print("f12 =", np.absolute(evals[2] - evals[1]) / 1e9, "GHz")
-        print("f23 =", np.absolute(evals[3] - evals[2]) / 1e9, "GHz")
-        print("f34 =", np.absolute(evals[4] - evals[3]) / 1e9, "GHz")
 
         return evals, evecs, H, a3, a4
 

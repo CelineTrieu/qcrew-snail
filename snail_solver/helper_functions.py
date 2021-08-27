@@ -115,7 +115,7 @@ def clean_spectrum(evals, evecs, m=3, threshold=1e-3):
             clean_evals.append(evals[i])
             clean_evecs.append(evecs[i])
 
-    return np.array(clean_evals), np.array(clean_evecs)
+    return np.array(clean_evals)[:-5], np.array(clean_evecs)[:-5]
 
 
 def add_spectrum_plot(ax, evals, evecs, fock_trunc):

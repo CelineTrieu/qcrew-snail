@@ -9,6 +9,12 @@ Ej = 14.851e9 * 3  # in Hz
 n = 3
 cap = 97.5e-15  # shunt capacitance in F
 
+# Create SNAIL
+n = 3
+Lj = 17e-9
+freq = 4.6e9
+
+
 first_anharmonicity_list = []
 fock_cutoff_list = []
 average_anharmonicity_list = []
@@ -20,8 +26,8 @@ alpha_list = np.arange(0.1, 0.5, 0.01)
 phi_ext_list = np.arange(0.1 * 2 * np.pi, 0.5 * 2 * np.pi, 0.01 * 2 * np.pi)
 for alpha in alpha_list:
     for phi_ext in phi_ext_list:
-        snail = SNAIL(Ej, n, alpha, phi_ext)
-        ancilla = Ancilla(snail, cap)
+        snail = SNAIL(n, alpha, phi_ext, Lj)
+        ancilla = Ancilla(snail, freq)
 
         (
             first_anharmonicity,
@@ -35,8 +41,8 @@ for alpha in alpha_list:
         first_anharmonicity_list.append(first_anharmonicity)
         fock_cutoff_list.append(fock_cutoff)
         average_anharmonicity_list.append(average_anharmonicity)
-        a3_list.append(a3 / ancilla.element.Ej)
-        a4_list.append(a4 / ancilla.element.Ej)
+        a3_list.append(a3)
+        a4_list.append(a4)
         validity = 1 if is_average_reliable and not snail.has_multiple_wells else 0
         validity = validity * (
             1

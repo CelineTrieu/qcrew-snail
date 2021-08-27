@@ -15,28 +15,25 @@ class SNAIL:
     Reference: 3-Wave Mixing Josephson Dipole Element (doi: 10.1063/1.4984142)
     """
 
-    def __init__(self, n, alpha, phi_ext, Ej=1):
+    def __init__(self, n, alpha, phi_ext, Lj):
 
-        self.Ej = Ej  # Hz
+        self.Lj = Lj  # Hz
         self.n = n
         self.alpha = alpha
         self.phi_ext = phi_ext  # reduced flux
 
-    def potential(self, phi, norm=True):
+    def potential(self, phi):
         """
-        Potential energy of the josephson junction loop as a function of the reduced
-        flux ::phi:: over the element. ::norm:: = True normalizes the cosines (Ej = 1).
+        Normalized potential energy of the josephson junction as a function of the
+        reduced flux ::phi:: over the element. Assumes Ej = 1.
         """
 
         pot_branch1 = -self.alpha * np.cos(phi)
         pot_branch2 = -self.n * np.cos((self.phi_ext - phi) / self.n)
 
-        if norm:
-            return pot_branch1 + pot_branch2
+        return pot_branch1 + pot_branch2
 
-        return self.Ej * (pot_branch1 + pot_branch2)
-
-    def solve_expansion(self, degree=40, scale=9 * np.pi, order=None, norm=True):
+    def solve_expansion(self, degree=40, scale=9 * np.pi, order=None):
         """
         Returns the flux of minimum potential and the coefficients of the truncated
         Taylor expansion around the minimum.
@@ -58,22 +55,10 @@ class SNAIL:
         )
 
         # return phi_min, taylor_potential
-        Ej = 1 if norm else self.Ej
+        a2 = taylor_potential[2]
+        Ej = 1 / 2 / (2 * np.pi * hbar * self.Lj * a2) * (flux_quantum / 2 / np.pi) ** 2
 
-        return phi_min, Ej * taylor_potential
-
-    def inductance(self, degree=40):
-        """
-        Obtain resonant frequency of the SNAIL shunted by a capacitance C. Also return SNAIL inductance Lj from 2nd order term.
-        """
-
-        taylor_expansion = self.solve_expansion(degree=degree, norm=False)[1]
-        a2 = taylor_expansion[2]
-        # Since self.Ej and consequently a2 are in units of Hz, the Lj expression needs
-        # a 2*pi*hbar correction factor.
-        Lj = 1 / 2 / (2 * np.pi * hbar * a2) * (flux_quantum / 2 / np.pi) ** 2
-
-        return Lj
+        return phi_min, Ej, taylor_potential
 
     def truncated_potential(
         self,
@@ -93,14 +78,18 @@ class SNAIL:
         element scale the (i+3)th term of the taylor expansion of the potential.
         """
 
-        phi_0, taylor_potential = self.solve_expansion(
-            degree=degree, scale=scale, order=order, norm=norm
+        phi_0, Ej, taylor_potential = self.solve_expansion(
+            degree=degree, scale=scale, order=order
         )
         phi_0 = phi_0 if shift else 0
         limit = 3 if nonlinear else 0
 
+        if norm == False:
+            taylor_potential = [Ej * a for a in taylor_potential][::-1]
+
         a3 = taylor_potential[3]
         a4 = taylor_potential[4]
+        print(Ej, a3 / Ej, a4 / Ej)
 
         def potential(x):
             return sum(
@@ -110,19 +99,17 @@ class SNAIL:
 
         return potential, a3, a4
 
-    def potential_derivative(self, phi, norm=True):
+    def potential_derivative(self, phi):
         """
-        Derivative of the snail potential with respect to ::phi::. ::norm:: = True
-        normalizes the potential cosines (Ej = 1). This function is used to analyze if
-        the potential has multiple wells in self.has_multiple_wells() method.
+        Derivative of the snail potential with respect to ::phi::. This function is
+        used to analyze if the potential has multiple wells in self.has_multiple_wells
+        () method.
         """
 
         pot_branch1_derivative = self.alpha * np.sin(phi)
         pot_branch2_derivative = -np.sin((self.phi_ext - phi) / self.n)
 
-        Ej = 1 if norm else self.Ej
-
-        return Ej * (pot_branch1_derivative + pot_branch2_derivative)
+        return pot_branch1_derivative + pot_branch2_derivative
 
     @property
     def has_multiple_wells(self):
@@ -131,77 +118,3 @@ class SNAIL:
         """
 
         return more_than_2_roots(self.potential_derivative, 0, self.n * 2 * np.pi)
-
-
-class JJ:
-    def __init__(self, Ej):
-
-        self.Ej = Ej  # Hz
-
-    def potential(self, phi, norm=True):
-        """
-        Potential energy of the josephson junction as a function of the reduced flux
-        ::phi:: over the element. ::norm:: = True normalizes the cosines (Ej = 1).
-        """
-
-        if norm:
-            return -np.cos(phi)
-
-        return self.Ej * -np.cos(phi)
-
-    def inductance(self, degree=40):
-        """
-        Obtain resonant frequency of the SNAIL shunted by a capacitance C. Also return
-        SNAIL inductance Lj from 2nd order term.
-        """
-
-        taylor_expansion = [
-            self.Ej * (-1) ** (k + 1) / np.math.factorial(2 * k) for k in range(degree)
-        ]
-
-        a2 = taylor_expansion[1]
-        # Since self.Ej and consequently a2 are in units of Hz, the Lj expression needs
-        # a 2*pi*hbar correction factor.
-        Lj = 1 / 2 / (2 * np.pi * hbar * a2) * (flux_quantum / 2 / np.pi) ** 2
-
-        return Lj
-
-    def truncated_potential(
-        self, degree=40, norm=True, shift=None, nonlinear=False, term_scaling=None
-    ):
-        """
-        Calculates the potential Taylor expansion and reconstructs the potential
-        function from the coefficients.
-        degree is the order of the cosine expasion.
-        norm = True returns potential in units of Ej.
-        nonlinear = True returns only the nonlinear part of the potential.
-        term_scaling accepts a list of floats in which the ith
-        element scale the (i+3)th term of the taylor expansion of the potential.
-        """
-        taylor_potential = [
-            (-1) ** (k + 1) / np.math.factorial(2 * k) for k in range(degree + 1)
-        ]
-        limit = 2 if nonlinear else 0
-
-        # padding term_scaling with unitary values
-        if term_scaling:
-            term_scaling = (
-                [1, 1, 1] + term_scaling + [1] * (degree - len(term_scaling) - 2)
-            )
-        else:
-            term_scaling = [1] * (degree + 1)
-
-        Ej = self.Ej
-        if norm:
-            Ej = 1.0
-
-        def potential(x):
-            return sum(
-                Ej
-                * taylor_potential[degree - k]
-                * x ** (degree - k)
-                * term_scaling[degree - k]
-                for k in range(len(taylor_potential) - limit)
-            )
-
-        return potential
