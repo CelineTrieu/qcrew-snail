@@ -59,6 +59,7 @@ class SNAIL:
 
         Ej = 1 / 2 / (2 * np.pi * hbar * self.Lj * a2) * (flux_quantum / 2 / np.pi) ** 2
         print(Ej)
+        print(taylor_potential[3])
         return phi_min, Ej, taylor_potential
 
     def truncated_potential(
@@ -85,15 +86,14 @@ class SNAIL:
         phi_0 = phi_0 if shift else 0
         limit = 3 if nonlinear else 0
 
-        if norm == False:
-            taylor_potential = [Ej * a for a in taylor_potential][::-1]
-
-        a3 = taylor_potential[3] / Ej
-        a4 = taylor_potential[4] / Ej
+        a3 = taylor_potential[3]
+        a4 = taylor_potential[4]
 
         def potential(x):
             return sum(
-                taylor_potential[degree - k] * (x - phi_0) ** (degree - k)
+                (1 if norm else Ej)
+                * taylor_potential[degree - k]
+                * (x - phi_0) ** (degree - k)
                 for k in range(len(taylor_potential) + 1 - limit)
             )
 

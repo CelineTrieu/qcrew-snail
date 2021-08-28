@@ -4,15 +4,10 @@ from snail_solver.elements import SNAIL
 from snail_solver.ancilla import Ancilla
 from snail_solver.helper_functions import *
 
-# Fixed parameters
-Ej = 14.851e9 * 3  # in Hz
-n = 3
-cap = 97.5e-15  # shunt capacitance in F
-
 # Create SNAIL
 n = 3
-Lj = 17e-9
-freq = 4.6e9
+Lj = 11e-9
+freq = 5.0e9
 
 
 first_anharmonicity_list = []
@@ -22,7 +17,7 @@ validity_list = []
 a3_list = []
 a4_list = []
 
-alpha_list = np.arange(0.1, 0.5, 0.01)
+alpha_list = np.arange(0.1, 0.6, 0.01)
 phi_ext_list = np.arange(0.1 * 2 * np.pi, 0.5 * 2 * np.pi, 0.01 * 2 * np.pi)
 for alpha in alpha_list:
     for phi_ext in phi_ext_list:
