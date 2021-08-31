@@ -14,10 +14,6 @@ class Ancilla:
         self,
         element,
         freq,
-<<<<<<< HEAD
-        Lj,
-=======
->>>>>>> de1ca688b27c0b276730493130c011b4f6afc828
         taylor_degree=40,
         taylor_scale=9 * np.pi,
         taylor_order=None,
@@ -32,15 +28,6 @@ class Ancilla:
         self.taylor_order = taylor_order if taylor_order else self.taylor_degree + 10
         self.fock_trunc = fock_trunc
 
-<<<<<<< HEAD
-        # circuit parameters
-        self.element = element
-        self.freq = freq  # linear mode frequency in Hz
-        self.Lj = Lj  # element inductance
-        self.element.Ej = self.calculate_Ej()  # update element Ej
-
-        # pyEPR will substitute the three lines below
-=======
         # Get nonlinear part of the truncated potential expanded around the minimum
         _ = self.element.truncated_potential(
             degree=self.taylor_degree,
@@ -55,7 +42,6 @@ class Ancilla:
         self.freq = freq  # linear mode frequency in Hz
         # These should be replaced by pyEPR. They only make sense when the SNAIL is not
         # coupled to anything else.
->>>>>>> de1ca688b27c0b276730493130c011b4f6afc828
         self.cap = 1 / self.Lj / (2 * np.pi * self.freq) ** 2
         self.phi_zpf = np.sqrt(hbar / (2 * self.cap * 2 * np.pi * self.freq))
         self.phi_rzpf = 2 * np.pi * self.phi_zpf / flux_quantum  # reduced flux zpf
@@ -89,12 +75,7 @@ class Ancilla:
         # scale the hamiltonian by Ej
         Hnl = self.Ej * self.nl_potential(self.phi_rzpf * (self.a + self.ad))
         Hl = self.n * self.freq
-<<<<<<< HEAD
-
-        return Hl + Hnl, a3, a4
-=======
         return Hl, Hnl, self.taylor_coef
->>>>>>> de1ca688b27c0b276730493130c011b4f6afc828
 
     def calculate_spectrum(self):
         """
@@ -106,11 +87,7 @@ class Ancilla:
         H = Hl + Hnl
         evals, evecs = H.eigenstates()
 
-<<<<<<< HEAD
-        return evals, evecs, H, a3, a4
-=======
         return evals, evecs, H, taylor_coef
->>>>>>> de1ca688b27c0b276730493130c011b4f6afc828
 
     def analyze_anharmonicities(self):
         """

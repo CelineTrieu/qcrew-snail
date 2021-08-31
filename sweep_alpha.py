@@ -9,11 +9,7 @@ Ej = 14.851e9 * 3  # in Hz
 n = 3
 alpha_list = [0.23, 0.26, 0.29, 0.32]
 phi_ext = 0.35 * 2 * np.pi
-<<<<<<< HEAD
-snail_list = [SNAIL(n, alpha, phi_ext, Ej=Ej) for alpha in alpha_list]
-=======
 snail_list = [SNAIL.from_Ej(Ej, n, alpha, phi_ext) for alpha in alpha_list]
->>>>>>> de1ca688b27c0b276730493130c011b4f6afc828
 
 # Create ancillas for given shunt capacitance
 freq = 5e9  # shunt capacitance in F
