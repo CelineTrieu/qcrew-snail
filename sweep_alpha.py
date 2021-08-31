@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from snail_solver.elements import SNAIL
+from snail_solver.snail_element import SNAIL
 from snail_solver.ancilla import Ancilla
 from snail_solver.helper_functions import *
 
@@ -9,16 +9,20 @@ Ej = 14.851e9 * 3  # in Hz
 n = 3
 alpha_list = [0.23, 0.26, 0.29, 0.32]
 phi_ext = 0.35 * 2 * np.pi
+<<<<<<< HEAD
 snail_list = [SNAIL(n, alpha, phi_ext, Ej=Ej) for alpha in alpha_list]
+=======
+snail_list = [SNAIL.from_Ej(Ej, n, alpha, phi_ext) for alpha in alpha_list]
+>>>>>>> de1ca688b27c0b276730493130c011b4f6afc828
 
 # Create ancillas for given shunt capacitance
-cap = 67.5e-15  # shunt capacitance in F
-ancilla_snail_list = [Ancilla(snail, cap) for snail in snail_list]
+freq = 5e9  # shunt capacitance in F
+ancilla_snail_list = [Ancilla(snail, freq) for snail in snail_list]
 
 fig, axes = plt.subplots(3, 1, sharex=True)
 for ancilla in ancilla_snail_list:
     # Ancilla analysis
-    evals, evecs, H = ancilla.calculate_spectrum()
+    evals, evecs, H, taylor_coef = ancilla.calculate_spectrum()
     evals, evecs = clean_spectrum(evals, evecs)  # Remove weird states
 
     # Draw plots

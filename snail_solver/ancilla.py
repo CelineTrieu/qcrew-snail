@@ -14,12 +14,17 @@ class Ancilla:
         self,
         element,
         freq,
+<<<<<<< HEAD
         Lj,
+=======
+>>>>>>> de1ca688b27c0b276730493130c011b4f6afc828
         taylor_degree=40,
         taylor_scale=9 * np.pi,
         taylor_order=None,
         fock_trunc=70,
     ):
+
+        self.element = element  # Josephson element
 
         # store numerical calc. parameters
         self.taylor_degree = taylor_degree
@@ -27,6 +32,7 @@ class Ancilla:
         self.taylor_order = taylor_order if taylor_order else self.taylor_degree + 10
         self.fock_trunc = fock_trunc
 
+<<<<<<< HEAD
         # circuit parameters
         self.element = element
         self.freq = freq  # linear mode frequency in Hz
@@ -34,6 +40,22 @@ class Ancilla:
         self.element.Ej = self.calculate_Ej()  # update element Ej
 
         # pyEPR will substitute the three lines below
+=======
+        # Get nonlinear part of the truncated potential expanded around the minimum
+        _ = self.element.truncated_potential(
+            degree=self.taylor_degree,
+            scale=self.taylor_scale,
+            order=self.taylor_order,
+            shift=False,
+            nonlinear=True,
+        )
+        self.nl_potential, self.taylor_coef, self.Ej, self.Lj = _
+
+        # circuit parameters
+        self.freq = freq  # linear mode frequency in Hz
+        # These should be replaced by pyEPR. They only make sense when the SNAIL is not
+        # coupled to anything else.
+>>>>>>> de1ca688b27c0b276730493130c011b4f6afc828
         self.cap = 1 / self.Lj / (2 * np.pi * self.freq) ** 2
         self.phi_zpf = np.sqrt(hbar / (2 * self.cap * 2 * np.pi * self.freq))
         self.phi_rzpf = 2 * np.pi * self.phi_zpf / flux_quantum  # reduced flux zpf
@@ -58,29 +80,21 @@ class Ancilla:
 
         return Ej
 
-    def calculate_hamiltonian(self, nonlinear=False):
+    def calculate_hamiltonian(self):
         """
         Retrieve a qutip hamiltonian operator from the nonlinear potential of the
         Josephson element.
         """
 
-        # Get nonlinear part of the truncated potential expanded around the minimum
-        nl_potential, a3, a4 = self.element.truncated_potential(
-            degree=self.taylor_degree,
-            scale=self.taylor_scale,
-            order=self.taylor_order,
-            norm=False,
-            shift=False,
-            nonlinear=True,
-        )
-
-        Hnl = nl_potential(self.phi_rzpf * (self.a + self.ad))
-        if nonlinear:
-            return Hnl, a3, a4
-
+        # scale the hamiltonian by Ej
+        Hnl = self.Ej * self.nl_potential(self.phi_rzpf * (self.a + self.ad))
         Hl = self.n * self.freq
+<<<<<<< HEAD
 
         return Hl + Hnl, a3, a4
+=======
+        return Hl, Hnl, self.taylor_coef
+>>>>>>> de1ca688b27c0b276730493130c011b4f6afc828
 
     def calculate_spectrum(self):
         """
@@ -88,10 +102,15 @@ class Ancilla:
         eigenstates.
         """
 
-        H, a3, a4 = self.calculate_hamiltonian()
+        Hl, Hnl, taylor_coef = self.calculate_hamiltonian()
+        H = Hl + Hnl
         evals, evecs = H.eigenstates()
 
+<<<<<<< HEAD
         return evals, evecs, H, a3, a4
+=======
+        return evals, evecs, H, taylor_coef
+>>>>>>> de1ca688b27c0b276730493130c011b4f6afc828
 
     def analyze_anharmonicities(self):
         """
@@ -99,7 +118,8 @@ class Ancilla:
         eigenstates.
         """
 
-        H, a3, a4 = self.calculate_hamiltonian()
+        Hl, Hnl, taylor_coef = self.calculate_hamiltonian()
+        H = Hl + Hnl
         evals, evecs = H.eigenstates()
         # Clean the spectrum of weird eigenstates
         evals, evecs = clean_spectrum(evals, evecs)
@@ -119,6 +139,9 @@ class Ancilla:
         is_average_reliable = True
         if len(anharm[max_index:]) < 10:
             is_average_reliable = False
+
+        a3 = taylor_coef[3]
+        a4 = taylor_coef[4]
 
         return (
             first_anharmonicity / 1e6,
