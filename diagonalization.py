@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from snail_solver.elements import SNAIL, SNAIL2
-from snail_solver.ancilla import Ancilla, Ancilla2
+from snail_solver.ancilla import Ancilla
 from snail_solver.helper_functions import *
+from snail_solver.snail_element import SNAIL
 
 # Create SNAIL
 n = 3
@@ -13,10 +13,12 @@ freq = 5.0e9
 
 # (alpha, phi) = (0.35, 0.35), (0.4, 0.35)
 
-snail = SNAIL(n, alpha, phi_ext, Lj)
+snail = SNAIL.from_Lj(Lj, n, alpha, phi_ext)
 ancilla = Ancilla(snail, freq)
+print(ancilla.Ej, ancilla.Lj)
+
 # get qutip hamiltonian operator
-evals, evecs, H, a3, a4 = ancilla.calculate_spectrum()
+evals, evecs, H, taylor_coef = ancilla.calculate_spectrum()
 evals, evecs = clean_spectrum(evals, evecs)  # Remove weird states
 
 fig, axes = plt.subplots(2, 1, sharex=True)

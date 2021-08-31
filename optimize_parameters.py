@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from snail_solver.elements import SNAIL
+from snail_solver.snail_element import SNAIL
 from snail_solver.ancilla import Ancilla
 from snail_solver.helper_functions import *
 
@@ -21,7 +21,7 @@ alpha_list = np.arange(0.1, 0.6, 0.01)
 phi_ext_list = np.arange(0.1 * 2 * np.pi, 0.5 * 2 * np.pi, 0.01 * 2 * np.pi)
 for alpha in alpha_list:
     for phi_ext in phi_ext_list:
-        snail = SNAIL(n, alpha, phi_ext, Lj)
+        snail = SNAIL.from_Lj(Lj, n, alpha, phi_ext)
         ancilla = Ancilla(snail, freq)
 
         (
