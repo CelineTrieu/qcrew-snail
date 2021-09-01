@@ -45,26 +45,11 @@ class Ancilla:
         self.cap = 1 / self.Lj / (2 * np.pi * self.freq) ** 2
         self.phi_zpf = np.sqrt(hbar / (2 * self.cap * 2 * np.pi * self.freq))
         self.phi_rzpf = 2 * np.pi * self.phi_zpf / flux_quantum  # reduced flux zpf
-        print(self.phi_rzpf, self.cap, self.Lj, self.element.Ej)
+
         # qutip mode operators
         self.a = qt.destroy(self.fock_trunc)
         self.ad = self.a.dag()
         self.n = qt.num(self.fock_trunc)
-
-    def calculate_Ej(self):
-        """
-        Returns the required Ej for a given SNAIL (external flux and alpha defined) to
-        have a given inductance Lj.
-        """
-
-        taylor_expansion = self.element.solve_expansion(degree=self.taylor_degree)[1]
-
-        # second-order term of the Taylor expansion of the SNAIL potential (normalized)
-        a2 = taylor_expansion[2]
-
-        Ej = 1 / 2 / (2 * np.pi * hbar * self.Lj * a2) * (flux_quantum / 2 / np.pi) ** 2
-
-        return Ej
 
     def calculate_hamiltonian(self):
         """
