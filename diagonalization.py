@@ -9,13 +9,12 @@ n = 3
 alpha = 0.35
 phi_ext = 0.35 * 2 * np.pi
 Lj = 11.0e-9
-freq = 5.0e9
+freq = 5.19381e9
 
 # (alpha, phi) = (0.35, 0.35), (0.4, 0.35)
 
 snail = SNAIL.from_Lj(Lj, n, alpha, phi_ext)
 ancilla = Ancilla(snail, freq)
-print(ancilla.Ej, ancilla.Lj)
 
 # get qutip hamiltonian operator
 evals, evecs, H, taylor_coef = ancilla.calculate_spectrum()
