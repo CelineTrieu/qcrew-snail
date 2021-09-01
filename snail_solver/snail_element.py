@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.interpolate import approximate_taylor_polynomial
 from scipy.optimize import minimize
 from snail_solver.helper_functions import *
