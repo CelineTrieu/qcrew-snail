@@ -7,7 +7,7 @@ from snail_solver.helper_functions import *
 # Create SNAIL
 n = 3
 Lj = 11e-9
-freq = 5.0e9
+freq = 5.19381e9
 
 
 first_anharmonicity_list = []
