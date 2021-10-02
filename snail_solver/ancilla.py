@@ -40,11 +40,6 @@ class Ancilla:
 
         # circuit parameters
         self.freq = freq  # linear mode frequency in Hz
-        # These should be replaced by pyEPR. They only make sense when the SNAIL is not
-        # coupled to anything else.
-        self.cap = 1 / self.Lj / (2 * np.pi * self.freq) ** 2
-        self.phi_zpf = np.sqrt(hbar / (2 * self.cap * 2 * np.pi * self.freq))
-        self.phi_rzpf = 2 * np.pi * self.phi_zpf / flux_quantum  # reduced flux zpf
 
         # qutip mode operators
         self.destroy = qt.destroy(self.fock_trunc)
@@ -54,11 +49,17 @@ class Ancilla:
     def calculate_hamiltonian(self):
         """
         Retrieve a qutip hamiltonian operator from the nonlinear potential of the
-        Josephson element.
+        Josephson element. Use only when the ancilla is not hybridized to any other
+        mode. In this case, the flux zpf should be calculated from pyEPR instead.
         """
 
+        # calculate the flux zpf for the isolated device
+        cap = 1 / self.Lj / (2 * np.pi * self.freq) ** 2
+        phi_zpf = np.sqrt(hbar / (2 * cap * 2 * np.pi * self.freq))
+        phi_rzpf = 2 * np.pi * phi_zpf / flux_quantum  # reduced flux zpf
+
         # scale the hamiltonian by Ej
-        Hnl = self.Ej * self.nl_potential(self.phi_rzpf * (self.destroy + self.create))
+        Hnl = self.Ej * self.nl_potential(phi_rzpf * (self.destroy + self.create))
         Hl = self.n * self.freq
         return Hl, Hnl, self.taylor_coef
 
