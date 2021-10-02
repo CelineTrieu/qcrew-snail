@@ -66,9 +66,9 @@ for sweep_indx, phi_ext in enumerate(phi_ext_list):
     # intantiate qutip operators
     a = qutip.destroy(ancilla.fock_trunc)
     ad = a.dag()
-    n = qutip.num(ancilla.fock_trunc)
+    num = qutip.num(ancilla.fock_trunc)
     mode_fields = [tensor_out(a + ad, i) for i in range(n_modes)]
-    mode_ns = [tensor_out(n, i) for i in range(n_modes)]
+    mode_ns = [tensor_out(num, i) for i in range(n_modes)]
 
     # build hamiltonian
     cos_interiors = PHI_zpf[0, 0] * mode_fields[0] + PHI_zpf[1, 0] * mode_fields[1]
@@ -77,7 +77,10 @@ for sweep_indx, phi_ext in enumerate(phi_ext_list):
     H = Hl + Hnl
 
     # diagonalize hamiltonian
+    print("diagonalizing hamiltonian")
     evals, evecs = H.eigenstates()
+    print("finished diagonalization")
     evals, evecs = clean_spectrum(evals, evecs, threshold=2.0)  # Remove weird states
-
+    print("converted states")
     np.savez("run%d" % sweep_indx, config=config, evals=evals, evecs=evecs)
+    print("data saved")
