@@ -176,3 +176,15 @@ def add_anharmonicity_plot(ax, evals, label=None):
     ax.set_ylabel("Anharmonicities (MHz)")
 
     return
+
+
+def closest_state_to(s, evals, evecs):
+    """
+    Find the element in <evecs> that is closest to <s> and return the respective evec
+    and eval.
+    """
+
+    def distance(s2):
+        return (s.dag() * s2[1]).norm()
+
+    return max(zip(evals, evecs), key=distance)
