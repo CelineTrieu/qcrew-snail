@@ -47,8 +47,8 @@ class Ancilla:
         self.phi_rzpf = 2 * np.pi * self.phi_zpf / flux_quantum  # reduced flux zpf
 
         # qutip mode operators
-        self.a = qt.destroy(self.fock_trunc)
-        self.ad = self.a.dag()
+        self.destroy = qt.destroy(self.fock_trunc)
+        self.create = self.destroy.dag()
         self.n = qt.num(self.fock_trunc)
 
     def calculate_hamiltonian(self):
@@ -58,7 +58,7 @@ class Ancilla:
         """
 
         # scale the hamiltonian by Ej
-        Hnl = self.Ej * self.nl_potential(self.phi_rzpf * (self.a + self.ad))
+        Hnl = self.Ej * self.nl_potential(self.phi_rzpf * (self.destroy + self.create))
         Hl = self.n * self.freq
         return Hl, Hnl, self.taylor_coef
 
