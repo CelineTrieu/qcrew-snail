@@ -6,7 +6,8 @@ from snail_solver.helper_functions import *
 
 # Create SNAIL
 n = 3
-Lj = 11e-9
+# Lj = 11e-9
+Ej = 14e9
 freq = 5.19381e9
 
 
@@ -21,7 +22,8 @@ alpha_list = np.arange(0.1, 0.6, 0.01)
 phi_ext_list = np.arange(0.1 * 2 * np.pi, 0.5 * 2 * np.pi, 0.01 * 2 * np.pi)
 for alpha in alpha_list:
     for phi_ext in phi_ext_list:
-        snail = SNAIL.from_Lj(Lj, n, alpha, phi_ext)
+        # snail = SNAIL.from_Lj(Lj, n, alpha, phi_ext)
+        snail = SNAIL.from_Ej(Ej, n, alpha, phi_ext)
         ancilla = Ancilla(snail, freq)
 
         (
@@ -110,13 +112,14 @@ im5 = axes[0, 2].pcolormesh(
     phi_ext_list, alpha_list, a3_list, shading="auto", cmap="viridis_r"
 )
 fig.colorbar(im5, ax=axes[0, 2])
-axes[0, 2].set_title("a3 (RWA)")
+axes[0, 2].set_title("a3")
 
 im6 = axes[1, 2].pcolormesh(
     phi_ext_list, alpha_list, a4_list, shading="auto", cmap="bwr"
 )
+im6.set_clim(-0.025, 0.025)
 fig.colorbar(im6, ax=axes[1, 2])
-axes[1, 2].set_title("a4 (RWA)")
+axes[1, 2].set_title("a4")
 axes[1, 2].set_xlabel("External flux (per flux quanta)")
 # fig.colorbar(c, ax=ax)
 plt.show()
