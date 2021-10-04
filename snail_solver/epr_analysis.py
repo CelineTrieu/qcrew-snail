@@ -23,4 +23,4 @@ def epr_analysis(HFSS_project_path, HFSS_project_name, junction_info):
     # analysis will not take place.
     epra = epr.QuantumAnalysis(eprh.data_filename)
 
-    return eprh, epra
+    return pinfo, eprh, epra

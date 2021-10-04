@@ -115,7 +115,7 @@ def clean_spectrum(evals, evecs, m=3, threshold=1e-3):
             clean_evals.append(evals[i])
             clean_evecs.append(evecs[i])
 
-    return np.array(clean_evals), np.array(clean_evecs)
+    return clean_evals, clean_evecs
 
 
 def add_spectrum_plot(ax, evals, evecs, fock_trunc):
@@ -178,13 +178,4 @@ def add_anharmonicity_plot(ax, evals, label=None):
     return
 
 
-def closest_state_to(s, evals, evecs):
-    """
-    Find the element in <evecs> that is closest to <s> and return the respective evec
-    and eval.
-    """
 
-    def distance(s2):
-        return (s.dag() * s2[1]).norm()
-
-    return max(zip(evals, evecs), key=distance)
