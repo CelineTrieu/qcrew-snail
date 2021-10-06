@@ -50,7 +50,7 @@ fock_trunc = 18
 freqs = 1e9 * np.array(
     eprh.get_ansys_frequencies_all().loc[str(variation)]["Freq. (GHz)"]
 )  # HFSS frequencies
-PHI_zpf = epra.get_epr_base_matrices(str(variation), _renorm_pj=True)
+PHI_zpf = epra.get_epr_base_matrices(str(variation), _renorm_pj=True)[4]
 ancilla = Ancilla(snail, freqs[np.argmax(PHI_zpf)], fock_trunc=fock_trunc)
 circuit = Circuit(ancilla, freqs, PHI_zpf)
 
