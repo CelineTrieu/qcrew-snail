@@ -84,12 +84,13 @@ class SNAIL:
             degree=degree, scale=scale, order=order
         )
         phi_0 = phi_0 if shift else 0
-        limit = 3 if nonlinear else 0
+        excluded_terms = [2, 0] if nonlinear else [0]
 
         def potential(x):
             return sum(
                 taylor_coef[degree - k] * (x - phi_0) ** (degree - k)
-                for k in range(len(taylor_coef) + 1 - limit)
+                for k in range(len(taylor_coef) + 1)
+                if degree - k not in excluded_terms
             )
 
         a2 = taylor_coef[2]
