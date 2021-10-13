@@ -82,10 +82,30 @@ class Circuit:
         self.Hnl = ancilla.Ej * ancilla.nl_potential(cos_interiors)
         self.H = self.Hl + self.Hnl
 
-        self.ancilla_spectrum = None  # To be defined in calc_ancilla_spectrum
-        self.circuit_spectrum = None  # To be defined in calc_spectrum
+        self._ancilla_spectrum, self._circuit_spectrum = None, None
 
-    def calc_ancilla_spectrum(self):
+    @property
+    def ancilla_spectrum(self):
+        if self._ancilla_spectrum:
+            return self._ancilla_spectrum
+
+        else:
+            self._ancilla_spectrum = self._calc_ancilla_spectrum()
+            return self._ancilla_spectrum
+
+    @property
+    def circuit_spectrum(self):
+        """
+        Full diagonalization of the circuit hamiltonian
+        """
+        if self._circuit_spectrum:
+            return self._circuit_spectrum
+
+        else:
+            self._circuit_spectrum = self.H.eigenstates()
+            return self._circuit_spectrum
+
+    def _calc_ancilla_spectrum(self):
         """
         Get eigenstates of the isolated ancilla. Used to build a 0-order approximation
         of the circuit spectrum. The clean_spectrum function is used to remove ill
@@ -93,38 +113,36 @@ class Circuit:
         """
 
         evals_0, evecs_0, _, _ = self.ancilla.calculate_spectrum()
-        self.ancilla_spectrum = clean_spectrum(evals_0, evecs_0)
-        return self.ancilla_spectrum
+        return clean_spectrum(evals_0, evecs_0)
 
-    def calc_spectrum(self):
-        """
-        Full diagonalization of the circuit hamiltonian
-        """
+    def get_eigenstate(self, exc):
+        """Return the eigenstate of the full coupled circuit corresponding to the given
+        mode excitations.
 
-        self.circuit_spectrum = self.H.eigenstates()
-        return self.circuit_spectrum
+        The function first finds the product state built from the eigenvectors of each
+        individual mode hamiltonian. This first guess can be understood as an RWA
+        eigenvector. Then returns the corresponding eigenstate of the full hamiltonian
+        that has larger overlap.
 
-    def get_eigenstate(self, d):
-        """
-        d={mode number: state number}
-        Gets a zeroth order approximation for the eigenstates assuming Fock states for
-        the resonator modes and the isolated ancilla state. Then returns the eigenstate
-        of the diagonalized circuit hamiltonian that is closest to this guess.
+        Args:
+            exc ([dict]): dictionary in which the keys are mode indexes (same indexing as self.mode_freqs) and the values are the number of excitations.
+
+        Returns:
+            [tuple]: (eval, evec), in which evec is the corresponding eigenstate of the circuit hamiltonian and eval is its eigenvalue (Hz).
         """
 
         # Get eigestates of linear modes
         eigenvectors_list = [
-            qt.basis(self.fock_trunc, d.get(i, 0)) for i in range(self.n_modes)
+            qt.basis(self.fock_trunc, exc.get(i, 0)) for i in range(self.n_modes)
         ]
         # get ancilla spectrum
         ancilla_eigenvecs = self.ancilla_spectrum[1]
         eigenvectors_list[self.ancilla_mode] = qt.Qobj(
-            ancilla_eigenvecs[d.get(self.ancilla_mode, 0)]
+            ancilla_eigenvecs[exc.get(self.ancilla_mode, 0)]
         )
         evec_guess = reduce(qt.tensor, eigenvectors_list)
 
-        # Return the eigenvector (and resp. eigenval) of the circuit spectrum that is
-        # closest to the guess.
+        # Return the eigenvector of the circuit spectrum that is closest to the guess.
         def distance(s2):
             return (evec_guess.dag() * s2[1]).norm()
 
