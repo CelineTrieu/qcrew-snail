@@ -120,40 +120,93 @@ class SNAIL:
 
 
 class SNAIL_from_Lj(SNAIL):
-    """ """
-
     def __init__(self, Lj, n, alpha, phi_ext):
+        """Child SNAIL class defined from its equivalent inductance.
 
+        The Josephon energy Ej of each series junction can be obtained from the
+        inductance and the second-order coefficient of the Taylor series of the SNAIL
+        potential.
+
+        Args:
+            Lj ([float]): Target equivalent inductance of the nonlinear element, in H.
+
+            n ([int]): Number of series Josephson junctions. Equals to the total number
+            of junctions minus one, corresponding to the shunting junction.
+
+            alpha ([float]): Josephson energy scaling of the shunt Josephson junction.
+
+            phi_ext ([float]): External reducing flux threading the circuit, in radians.
+        """
         self.Lj = Lj  # H
         super().__init__(n, alpha, phi_ext)  # Passes other parameters to parent
 
     def Ej(self, a2):
+        """Calculate Ej from Lj and second-order term of Taylor series of the SNAIL
+        potential.
+
+        Args:
+            a2 ([float]): Second-order term of the Taylor expansion of the potential.
+
+        Returns:
+            [float]: Equivalent inductance of the element.
+        """
         Ej = 1 / 2 / (2 * np.pi * hbar * self.Lj * a2) * (flux_quantum / 2 / np.pi) ** 2
         return Ej
 
     def get_Ej_Lj(self, a2):
-        """
-        a2 is the second-order coefficient of the Taylor expansion of the normalized
-        potential.
+        """Bundle up and return both Josephson energy of shunt junctions and equivalent inductance.
+
+        Args:
+            a2 ([float]): Second-order term of the Taylor expansion of the potential.
+
+        Returns:
+            [tuple]: (Ej, Lj), where Ej is the Josephson energy of shunt junctions and Lj is the equivalent inductance.
         """
         return self.Ej(a2), self.Lj
 
 
 class SNAIL_from_Ej(SNAIL):
-    """ """
-
     def __init__(self, Ej, n, alpha, phi_ext):
+        """Child SNAIL class defined from the Josephson energy Ej of the series
+        junctions.
 
+        The equivalent SNAIL inductance Lj can be obtained from the inductance and the
+        second-order coefficient of the Taylor series of the SNAIL potential.
+
+        Args:
+            Ej ([float]): Equivalent Josephson energy of the series Josephson junctions,
+            in Hz.
+
+            n ([int]): Number of series Josephson junctions. Equals to the total number
+            of junctions minus one, corresponding to the shunting junction.
+
+            alpha ([float]): Josephson energy scaling of the shunt Josephson junction.
+
+            phi_ext ([float]): External reducing flux threading the circuit, in radians.
+        """
         self.Ej = Ej  # Hz
         super().__init__(n, alpha, phi_ext)  # Passes other parameters to parent
 
     def Lj(self, a2):
+        """Calculate equivalent inductance from Ej and second-order term of Taylor
+        series of the SNAIL potential.
+
+        Args:
+            a2 ([float]): Second-order term of the Taylor expansion of the potential.
+
+        Returns:
+            [float]: Equivalent inductance of the element.
+        """
         Lj = 1 / 2 / (2 * np.pi * hbar * self.Ej * a2) * (flux_quantum / 2 / np.pi) ** 2
         return Lj
 
     def get_Ej_Lj(self, a2):
-        """
-        a2 is the second-order coefficient of the Taylor expansion of the normalized
-        potential.
+        """Bundle up and return both Ej and Lj.
+
+        Args:
+            a2 ([float]): Second-order term of the Taylor expansion of the potential.
+
+        Returns:
+            [tuple]: (Ej, Lj), where Ej is the Josephson energy of shunt junctions and Lj is the equivalent inductance.
         """
         return self.Ej, self.Lj(a2)
