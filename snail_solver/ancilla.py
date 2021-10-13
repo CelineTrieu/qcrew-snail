@@ -1,5 +1,6 @@
-"""
-The ancilla is defined by a nonlinear Josephson element shunted by a capacitance cap.
+"""The ancilla object is defined by a generalized nonlinear Josephson element shunted 
+by a capacitance. It is designed to receive the linear mode frequency directly from 
+HFSS to grant seamless connection to simulations.
 """
 
 import qutip as qt
@@ -17,8 +18,28 @@ class Ancilla:
         taylor_degree=40,
         taylor_scale=9 * np.pi,
         taylor_order=None,
-        fock_trunc=70,
+        fock_trunc=20,
     ):
+        """Define an ancilla from a nonlinear element and a linear mode frequency.
+
+        Args:
+
+            element ([JJ], [SNAIL]): JJ or SNAIL object. Defines nonlinear element that
+            composes the ancilla. This also gives the inductance
+
+            freq ([float]): Linear mode frequency as obtained from HFSS (Hz).
+
+            taylor_degree (int, optional): Numerical parameter. Defines degree of the
+            Taylor series expansion of the potential. Defaults to 40.
+
+            taylor_scale ([type], optional): Range of fit for Taylor series expansion.
+            Defaults to 9*np.pi.
+
+            taylor_order ([type], optional): Another parameter of the Taylor expansion.
+            Defaults to None, in which case it is redefined as taylor_degree + 10.
+
+            fock_trunc (int, optional): Dimension of qutip matrices. Defaults to 20.
+        """
 
         self.element = element  # Josephson element
 
@@ -45,12 +66,40 @@ class Ancilla:
         self.destroy = qt.destroy(self.fock_trunc)
         self.create = self.destroy.dag()
         self.n = qt.num(self.fock_trunc)
+        self._Hl, self._Hnl = None, None
 
-    def calculate_hamiltonian(self):
-        """
-        Retrieve a qutip hamiltonian operator from the nonlinear potential of the
-        Josephson element. Use only when the ancilla is not hybridized to any other
-        mode. In this case, the flux zpf should be calculated from pyEPR instead.
+    @property
+    def Hl(self):
+        """Linear part of ancilla hamiltonian when isolated from other circuit
+        elements, in Hz."""
+
+        if self._Hl:
+            return self._Hl
+        else:
+            self._Hl, self._Hnl = self._calculate_hamiltonian()
+            return self._Hl
+
+    @property
+    def Hnl(self):
+        """Nonlinear part of ancilla hamiltonian when isolated from other circuit
+        elements, in Hz."""
+
+        if self._Hnl:
+            return self._Hnl
+        else:
+            self._Hl, self._Hnl = self._calculate_hamiltonian()
+            return self._Hnl
+
+    def _calculate_hamiltonian(self):
+        """Retrieve the hamiltonian of the ancilla assuming it is isolated from other
+        circuit elements.
+
+        Since the ancilla is assumed to be isolated, the reduced flux zpf can be
+        calculated analitically.
+
+        Returns:
+            [tuple]: (Hl, Hnl), where Hl and Hnl are [Qobj] operators of the linear and
+            nonlinear parts of the ancilla hamiltonian in Hz.
         """
 
         # calculate the flux zpf for the isolated device
@@ -61,19 +110,21 @@ class Ancilla:
         # scale the hamiltonian by Ej
         Hnl = self.Ej * self.nl_potential(phi_rzpf * (self.destroy + self.create))
         Hl = self.n * self.freq
-        return Hl, Hnl, self.taylor_coef
+        return Hl, Hnl
 
     def calculate_spectrum(self):
-        """
-        Diagonalizes the circuit hamiltonian and retrieves its eigenvalues and
+        """Diagonalizes the circuit hamiltonian and retrieves its eigenvalues and
         eigenstates.
+
+        Returns:
+            [tuple]: (evals, evecs), where evals is an [np.array] of hamiltonian
+            eigenvalues in Hz and evecs is the respecetive [np.array] of eigenvectors.
         """
 
-        Hl, Hnl, taylor_coef = self.calculate_hamiltonian()
-        H = Hl + Hnl
+        H = self.Hl + self.Hnl
         evals, evecs = H.eigenstates()
 
-        return evals, evecs, H, taylor_coef
+        return evals, evecs
 
     def analyze_anharmonicities(self):
         """
@@ -81,8 +132,7 @@ class Ancilla:
         eigenstates.
         """
 
-        Hl, Hnl, taylor_coef = self.calculate_hamiltonian()
-        H = Hl + Hnl
+        H = self.Hl + self.Hnl
         evals, evecs = H.eigenstates()
         # Clean the spectrum of weird eigenstates
         evals, evecs = clean_spectrum(evals, evecs)
@@ -103,14 +153,9 @@ class Ancilla:
         if len(anharm[max_index:]) < 10:
             is_average_reliable = False
 
-        a3 = taylor_coef[3]
-        a4 = taylor_coef[4]
-
         return (
             first_anharmonicity / 1e6,
             fock_cutoff,
             average_anharmonicity / 1e6,
             is_average_reliable,
-            a3,
-            a4,
         )

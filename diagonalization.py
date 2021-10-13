@@ -18,9 +18,9 @@ freq = 5.19381e9
 
 snail = SNAIL.from_Lj(Lj, n, alpha, phi_ext)
 ancilla = Ancilla(snail, freq, fock_trunc=fock_trunc)
-print(ancilla.Ej)
+
 # get qutip hamiltonian operator
-evals, evecs, H, taylor_coef = ancilla.calculate_spectrum()
+evals, evecs = ancilla.calculate_spectrum()
 evals, evecs = clean_spectrum(evals, evecs)  # Remove weird states
 
 fig, axes = plt.subplots(2, 1, sharex=True)
