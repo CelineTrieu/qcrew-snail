@@ -20,12 +20,14 @@ class Ancilla:
         taylor_order=None,
         fock_trunc=20,
     ):
-        """Define an ancilla from a nonlinear element and a linear mode frequency.
+        """Define an ancilla from a nonlinear circuit element and a linear mode
+        frequency.
 
         Args:
 
-            element ([JJ], [SNAIL]): JJ or SNAIL object. Defines nonlinear element that
-            composes the ancilla. This also gives the inductance
+            element ([JJ], [SNAIL]): JJ or SNAIL object. Defines nonlinear circuit
+            element that composes the ancilla. This element is responsible for defining
+            the inductance of the ancilla mode.
 
             freq ([float]): Linear mode frequency as obtained from HFSS (Hz).
 
@@ -41,7 +43,7 @@ class Ancilla:
             fock_trunc (int, optional): Dimension of qutip matrices. Defaults to 20.
         """
 
-        self.element = element  # Josephson element
+        self.element = element
 
         # store numerical calc. parameters
         self.taylor_degree = taylor_degree
@@ -70,8 +72,7 @@ class Ancilla:
 
     @property
     def Hl(self):
-        """Linear part of ancilla hamiltonian when isolated from other circuit
-        elements, in Hz."""
+        """Linear part of ancilla hamiltonian when isolated from other modes, in Hz."""
 
         if self._Hl:
             return self._Hl
@@ -81,8 +82,7 @@ class Ancilla:
 
     @property
     def Hnl(self):
-        """Nonlinear part of ancilla hamiltonian when isolated from other circuit
-        elements, in Hz."""
+        """Nonlinear part of ancilla hamiltonian when isolated from other modes, in Hz."""
 
         if self._Hnl:
             return self._Hnl
@@ -92,7 +92,7 @@ class Ancilla:
 
     def _calculate_hamiltonian(self):
         """Retrieve the hamiltonian of the ancilla assuming it is isolated from other
-        circuit elements.
+        modes.
 
         Since the ancilla is assumed to be isolated, the reduced flux zpf can be
         calculated analitically.
