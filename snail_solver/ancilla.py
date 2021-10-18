@@ -11,34 +11,21 @@ from snail_solver.helper_functions import *
 
 
 class Ancilla:
-    def __init__(
-        self,
-        element,
-        freq,
-        taylor_degree=40,
-        taylor_scale=9 * np.pi,
-        taylor_order=None,
-        fock_trunc=20,
-    ):
+    def __init__(self, element, freq, fock_trunc=20, taylor_parameters=None):
         """Define an ancilla from a nonlinear circuit element and a linear mode
         frequency.
 
         Args:
 
-            element ([JJ], [SNAIL]): JJ or SNAIL object. Defines nonlinear circuit
+            element (JJ, SNAIL): JJ or SNAIL object. Defines nonlinear circuit
             element that composes the ancilla. This element is responsible for defining
             the inductance of the ancilla mode.
 
-            freq ([float]): Linear mode frequency as obtained from HFSS (Hz).
+            freq (float): Linear mode frequency as obtained from HFSS (Hz).
 
-            taylor_degree (int, optional): Numerical parameter. Defines degree of the
-            Taylor series expansion of the potential. Defaults to 40.
-
-            taylor_scale ([type], optional): Range of fit for Taylor series expansion.
-            Defaults to 9*np.pi.
-
-            taylor_order ([type], optional): Another parameter of the Taylor expansion.
-            Defaults to None, in which case it is redefined as taylor_degree + 10.
+            taylor_parameters (dict): Dictionary defining numerical parameters for
+            fitting the element potential to a Taylor series. See SNAIL.solve_expansion
+            method.
 
             fock_trunc (int, optional): Dimension of qutip matrices. Defaults to 20.
         """
@@ -46,17 +33,15 @@ class Ancilla:
         self.element = element
 
         # store numerical calc. parameters
-        self.taylor_degree = taylor_degree
-        self.taylor_scale = taylor_scale
-        self.taylor_order = taylor_order if taylor_order else self.taylor_degree + 10
         self.fock_trunc = fock_trunc
+        if not taylor_parameters:
+            taylor_parameters = {"degree": 40, "scale": 9 * np.pi, "order": None}
+        self.taylor_parameters = taylor_parameters
 
         # Get nonlinear part of the truncated potential expanded around the minimum
         _ = self.element.truncated_potential(
-            degree=self.taylor_degree,
-            scale=self.taylor_scale,
-            order=self.taylor_order,
-            shift=False,
+            self.taylor_parameters,
+            shift=True,
             nonlinear=True,
         )
         self.nl_potential, self.taylor_coef, self.Ej, self.Lj = _
@@ -98,7 +83,7 @@ class Ancilla:
         calculated analitically.
 
         Returns:
-            [tuple]: (Hl, Hnl), where Hl and Hnl are [Qobj] operators of the linear and
+            tuple: (Hl, Hnl), where Hl and Hnl are Qobj operators of the linear and
             nonlinear parts of the ancilla hamiltonian in Hz.
         """
 
@@ -117,8 +102,8 @@ class Ancilla:
         eigenstates.
 
         Returns:
-            [tuple]: (evals, evecs), where evals is an [np.array] of hamiltonian
-            eigenvalues in Hz and evecs is the respecetive [np.array] of eigenvectors.
+            tuple: (evals, evecs), where evals is an np.array of hamiltonian
+            eigenvalues in Hz and evecs is the respecetive np.array of eigenvectors.
         """
 
         H = self.Hl + self.Hnl

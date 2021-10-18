@@ -7,13 +7,11 @@ from snail_solver.snail_element import SNAIL
 fock_trunc = 30
 
 # Create SNAIL
-n = 3
-alpha = 0.320
-phi_ext = 0.470 * 2 * np.pi
+snail_parameters = {"n": 3, "alpha": 0.320, "phi_ext": 0.470 * 2 * np.pi}
 Lj = 11.0e-9
 freq = 5.19381e9
 
-snail = SNAIL.from_Lj(Lj, n, alpha, phi_ext)
+snail = SNAIL.from_Lj(Lj, snail_parameters)
 ancilla = Ancilla(snail, freq, fock_trunc=fock_trunc)
 
 # get qutip hamiltonian operator
