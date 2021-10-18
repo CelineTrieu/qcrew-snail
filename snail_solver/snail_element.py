@@ -1,3 +1,15 @@
+"""
+Normalized SNAIL. The hamiltonian scaling is decided either by Lj or Ej, which is
+done in the child classes.
+
+The SNAIL element is defined as having two nodes connected by two parallel
+branches. One branch has ::n:: josephson junctions with characteristic energies
+:Ej: and the other branch has one junction with energy ::Ej:: scaled by ::alpha::.
+The branches form a loop threaded by a reduced external flux ::phi_ext::.
+
+Reference: 3-Wave Mixing Josephson Dipole Element (doi: 10.1063/1.4984142)
+"""
+
 import numpy as np
 from scipy.interpolate import approximate_taylor_polynomial
 from scipy.optimize import minimize
@@ -5,35 +17,52 @@ from snail_solver.helper_functions import *
 
 
 class SNAIL:
-    """
-    Normalized SNAIL. The hamiltonian scaling is decided either by Lj or Ej, which is
-    done in the child classes.
-
-    The SNAIL element is defined as having two nodes connected by two parallel
-    branches. One branch has ::n:: josephson junctions with characteristic energies
-    :Ej: and the other branch has one junction with energy ::Ej:: scaled by ::alpha::.
-    The branches form a loop threaded by a reduced external flux ::phi_ext::.
-
-    Reference: 3-Wave Mixing Josephson Dipole Element (doi: 10.1063/1.4984142)
-    """
-
     def __init__(self, n, alpha, phi_ext):
+        """Base class for a SNAIL circuit element.
+
+        The SNAIL element is used to define an ancilla object.
+
+        Args:
+            n ([int]): Number of series Josephson junctions. Equals to the total number
+            of junctions minus one, corresponding to the shunting junction.
+
+            alpha ([float]): Josephson energy scaling of the shunt Josephson junction.
+
+            phi_ext ([float]): External reducing flux threading the circuit, in radians.
+        """
         self.n = n
         self.alpha = alpha
-        self.phi_ext = phi_ext  # reduced flux
+        self.phi_ext = phi_ext
 
     @classmethod
     def from_Lj(self, Lj, n, alpha, phi_ext):
+        """The SNAIL is defined by a fixed Lj. Ej is a function of the parameters and
+        the Taylor expansion.
+
+        Returns:
+            [SNAIL_from_Lj]: Child object that contains method to calculate Ej.
+        """
         return SNAIL_from_Lj(Lj, n, alpha, phi_ext)
 
     @classmethod
     def from_Ej(self, Ej, n, alpha, phi_ext):
+        """The SNAIL is defined by a fixed Ej. Lj is a function of the parameters and
+        the Taylor expansion.
+
+        Returns:
+            [SNAIL_from_Ej]: Child object that contains method to calculate Lj.
+        """
         return SNAIL_from_Ej(Ej, n, alpha, phi_ext)
 
     def potential(self, phi):
-        """
-        Normalized potential energy of the josephson junction as a function of the
-        reduced flux ::phi:: over the element. Assumes Ej = 1.
+        """Normalized (Ej=1) potential energy as a function of the reduced flux over
+        the element.
+
+        Args:
+            phi ([float]): Reduced flux over the SNAIL element
+
+        Returns:
+            [type]: [description]
         """
 
         pot_branch1 = -self.alpha * np.cos(phi)
@@ -42,10 +71,8 @@ class SNAIL:
         return pot_branch1 + pot_branch2
 
     def solve_expansion(self, degree=40, scale=9 * np.pi, order=None):
-        """
-        Returns the flux of minimum potential and the coefficients of the truncated
+        """Returns the flux of minimum potential and the coefficients of the truncated
         Taylor expansion around the minimum.
-        scale is the width of the interval used in the Taylor fit.
         """
 
         order = order if order else degree + 10
@@ -72,12 +99,18 @@ class SNAIL:
         shift=True,
         nonlinear=False,
     ):
-        """
-        Calculates the potential Taylor expansion and reconstructs the potential
+        """Calculates the Taylor expansion of the potential and reconstructs the
         function from the coefficients.
-        degree is the order of the cosine expasion.
-        nonlinear = True returns only the nonlinear part of the potential.
-        element scale the (i+3)th term of the taylor expansion of the potential.
+
+        Args:
+            degree (int, optional): [description]. Defaults to 40.
+            scale ([type], optional): [description]. Defaults to 9*np.pi.
+            order ([type], optional): [description]. Defaults to None.
+            shift (bool, optional): [description]. Defaults to True.
+            nonlinear (bool, optional): [description]. Defaults to False.
+
+        Returns:
+            [type]: [description]
         """
 
         phi_0, taylor_coef = self.solve_expansion(
@@ -99,10 +132,14 @@ class SNAIL:
         return potential, taylor_coef, Ej, Lj
 
     def potential_derivative(self, phi):
-        """
-        Derivative of the snail potential with respect to ::phi::. This function is
-        used to analyze if the potential has multiple wells in self.has_multiple_wells
-        () method.
+        """Derivative of the snail potential with respect to the reduced flux across
+        the junction.
+
+        Args:
+            phi ([float]): Flux point where to calculate the derivative value.
+
+        Returns:
+            [float]: Value of the derivative of the potential.
         """
 
         pot_branch1_derivative = self.alpha * np.sin(phi)
@@ -112,8 +149,11 @@ class SNAIL:
 
     @property
     def has_multiple_wells(self):
-        """
-        Analyzes if the potential has more than one local minimum per period.
+        """Analyzes if the potential has more than one local minimum per period.
+
+        Returns:
+            [bool]: Returns True if more than one local minimum is found in a period
+            of the SNAIL potential.
         """
 
         return more_than_2_roots(self.potential_derivative, 0, self.n * 2 * np.pi)
@@ -154,13 +194,15 @@ class SNAIL_from_Lj(SNAIL):
         return Ej
 
     def get_Ej_Lj(self, a2):
-        """Bundle up and return both Josephson energy of shunt junctions and equivalent inductance.
+        """Bundle up and return both Josephson energy of shunt junctions and equivalent
+        inductance.
 
         Args:
             a2 ([float]): Second-order term of the Taylor expansion of the potential.
 
         Returns:
-            [tuple]: (Ej, Lj), where Ej is the Josephson energy of shunt junctions and Lj is the equivalent inductance.
+            [tuple]: (Ej, Lj), where Ej is the Josephson energy of shunt junctions and
+            Lj is the equivalent inductance.
         """
         return self.Ej(a2), self.Lj
 
@@ -207,6 +249,7 @@ class SNAIL_from_Ej(SNAIL):
             a2 ([float]): Second-order term of the Taylor expansion of the potential.
 
         Returns:
-            [tuple]: (Ej, Lj), where Ej is the Josephson energy of shunt junctions and Lj is the equivalent inductance.
+            [tuple]: (Ej, Lj), where Ej is the Josephson energy of shunt junctions and
+            Lj is the equivalent inductance.
         """
         return self.Ej, self.Lj(a2)
