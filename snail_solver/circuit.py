@@ -112,7 +112,7 @@ class Circuit:
         states.
         """
 
-        evals_0, evecs_0, _, _ = self.ancilla.calculate_spectrum()
+        evals_0, evecs_0 = self.ancilla.calculate_spectrum()
         return clean_spectrum(evals_0, evecs_0)
 
     def get_eigenstate(self, exc):
