@@ -103,7 +103,7 @@ class Ancilla:
 
         Returns:
             tuple: (evals, evecs), where evals is an np.array of hamiltonian
-            eigenvalues in Hz and evecs is the respecetive np.array of eigenvectors.
+            eigenvalues in Hz and evecs is the respective np.array of eigenvectors.
         """
 
         H = self.Hl + self.Hnl

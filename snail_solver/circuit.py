@@ -1,5 +1,8 @@
 """
 Class defining a circuit containing one ancilla coupled to one or more resonators.
+
+It is designed to work seamlessly with pyEPR, having as inputs the list of reduced flux
+zero-point fluctuations and a list of mode frequencies.
 """
 
 import qutip as qt
@@ -8,29 +11,51 @@ from functools import reduce
 
 
 def tensor_out(op, loc, fock_trunc, n):
+    """Expands a single-mode operator into a multi-mode Hilbert space.
+
+    The operator op tensored with identities at locations other than loc. fock_trunc is
+    the dimension of each individual operator and n is the number of modes.
+
+    Args:
+        op (Qobj): Operator acting on a given mode.
+        loc (int): Index of the mode.
+        fock_trunc (int): Dimension of each operator.
+        n (int): number of modes considered.
+
+    Returns:
+        Qobj: Operator op tensored up to a larger Hilbert space.
     """
-    Make operator <op> tensored with identities at locations other than <loc>.
-    <fock_trunc> is the dimension of each individual operator and <n> is the number of
-    operators.
-    """
+
     op_list = [qt.qeye(fock_trunc) for i in range(n)]
     op_list[loc] = op
     return reduce(qt.tensor, op_list)
 
 
 def dot(ais, bis):
-    """
-    Dot product
-    """
+    """Dot product function between two input lists."""
     return sum(ai * bi for ai, bi in zip(ais, bis))
 
 
 def clean_spectrum(evals, evecs, m=3, threshold=1e-3):
     """
     Remove from the list the eigenvectors that have too much population in the last
-    ::m:: Fock states.
+    m Fock states.
 
     TODO this is repeated from helper_functions. Find a way to import it from there.
+
+    Args:
+        evals (list): Total list of eigenvalues.
+
+        evecs (list): Total list of Qobj eigenvectors.
+
+        m (int, optional): The last m fock states are considered to be numerically
+        unreliable. Defaults to 3.
+
+        threshold ([type], optional): Maximum eigenstate population acceptable in the
+        last m fock states. Defaults to 1e-3.
+
+    Returns:
+        tuple: (evals, evecs) with unreliable states removed.
     """
 
     clean_evals = []
@@ -51,14 +76,26 @@ class Circuit:
         self,
         ancilla,
         freqs,
-        PHI_zpf,  # Comes from pyEPR. The higher PHI is assumed to be the ancilla's
+        phi_rzpf,
     ):
+        """Define a circuit composed of multiple modes, one of which is an ancilla.
+
+        The ancilla mode is identified as the mode with largest reduced flux zero-point
+        fluctuation. The remaining are assumed to be resonator modes.
+
+        Args:
+            ancilla (Ancilla): ancilla object.
+
+            freqs (list): List of linear frequencies of each mode in Hz.
+
+            phi_rzpf (list): List of reduced flux zero-point fluctuations over the ancilla junction for each mode.
+        """
 
         self.fock_trunc = ancilla.fock_trunc
         self.n_modes = len(freqs)  # Assign one mode for each circ. element
         self.ancilla = ancilla
         self.mode_freqs = freqs
-        self.ancilla_mode = np.argmax(PHI_zpf)
+        self.ancilla_mode = np.argmax(phi_rzpf)
 
         # get auxiliary operators
         a = qt.destroy(self.fock_trunc)
@@ -75,7 +112,7 @@ class Circuit:
 
         # build hamiltonian.
         cos_interiors = sum(
-            [PHI_zpf[i, 0] * self.mode_fields[i] for i in range(self.n_modes)]
+            [phi_rzpf[i, 0] * self.mode_fields[i] for i in range(self.n_modes)]
         )
 
         self.Hl = dot(self.mode_freqs, self.mode_ns)
@@ -86,6 +123,7 @@ class Circuit:
 
     @property
     def ancilla_spectrum(self):
+        """Eigenvalues and eigenvectors of the hamiltonian of the isolated ancilla."""
         if self._ancilla_spectrum:
             return self._ancilla_spectrum
 
@@ -95,9 +133,7 @@ class Circuit:
 
     @property
     def circuit_spectrum(self):
-        """
-        Full diagonalization of the circuit hamiltonian
-        """
+        """Eigenvalues and eigenvectors of the full hamiltonian of the circuit."""
         if self._circuit_spectrum:
             return self._circuit_spectrum
 
@@ -106,10 +142,15 @@ class Circuit:
             return self._circuit_spectrum
 
     def _calc_ancilla_spectrum(self):
-        """
-        Get eigenstates of the isolated ancilla. Used to build a 0-order approximation
-        of the circuit spectrum. The clean_spectrum function is used to remove ill
-        states.
+        """Calculate the spectrum of the isolated ancilla.
+
+        This function is used to build a zeroth-order approximation of the circuit
+        spectrum. The clean_spectrum function is used to remove states that are not
+        numerically reliable.
+
+        Returns:
+            tuple: (evals, evecs), where evals is an np.array of hamiltonian
+            eigenvalues in Hz and evecs is the respective np.array of eigenvectors.
         """
 
         evals_0, evecs_0 = self.ancilla.calculate_spectrum()
@@ -125,10 +166,10 @@ class Circuit:
         that has larger overlap.
 
         Args:
-            exc ([dict]): dictionary in which the keys are mode indexes (same indexing as self.mode_freqs) and the values are the number of excitations.
+            exc (dict): dictionary in which the keys are mode indexes (same indexing as self.mode_freqs) and the values are the number of excitations.
 
         Returns:
-            [tuple]: (eval, evec), in which evec is the corresponding eigenstate of the circuit hamiltonian and eval is its eigenvalue (Hz).
+            tuple: (eval, evec), in which evec is the corresponding eigenstate of the circuit hamiltonian and eval is its eigenvalue (Hz).
         """
 
         # Get eigestates of linear modes
