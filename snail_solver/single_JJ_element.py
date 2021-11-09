@@ -61,28 +61,29 @@ class JJ:
 
     def truncated_potential(
         self,
-        degree=40,
-        scale=9 * np.pi,
-        order=None,
-        shift=True,
+        taylor_parameters,
+        shift=False,
         nonlinear=False,
     ):
-        """Return the Taylor expansion of the junction potential and, if needed, calculate Ej and Lj according to the expansion.
+        """Calculates the Taylor expansion of the potential and reconstructs the
+        function from the coefficients.
 
         Args:
-            degree (int, optional): [description]. Defaults to 40.
 
-            scale ([type], optional): Width of the fit interval of the Taylor expansion around the minimum. Defaults to 9*np.pi.
+            taylor_parameters (dict): Dictionary defining numerical parameters for
+            fitting the element potential to a Taylor series. In the case of the JJ, only the degree of the Taylor polynomial needs to be defined.
 
-            order ([type], optional): [description]. Defaults to None.
+            shift (bool, optional): If True, the returned potential is
+            redefined in terms of the distance from its minimum. Defaults to False.
 
-            shift (bool, optional): If shift = False, redefine the point of minimum potential as zero flux. Defaults to True.
-
-            nonlinear (bool, optional): If nonlinear = True, consider only the nonlinear terms. Defaults to False.
+            nonlinear (bool, optional): If True, exclude the second-order term from the
+            polynomial series. Defaults to False.
 
         Returns:
-            [tuple]: [description]
+            tuple: (potential, taylor_coef, Ej, Lj)
         """
+
+        degree = taylor_parameters["degree"]
 
         taylor_coef = [
             -np.real((1j) ** k / math.factorial(k)) if k % 2 == 0 else 0
