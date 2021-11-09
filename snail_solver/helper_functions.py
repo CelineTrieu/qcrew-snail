@@ -14,6 +14,8 @@ e_charge = 1.602e-19
 hbar = 1.054e-34
 flux_quantum = 2.067e-15  # magnetic flux quantum
 
+unit_dict = {"GHz": 1e9, "MHz": 1e6, "kHz": 1e3, "Hz": 1}
+
 
 def rootsearch(f, a, b, dx):
     x1 = a
@@ -118,7 +120,7 @@ def clean_spectrum(evals, evecs, m=3, threshold=1e-3):
     return clean_evals, clean_evecs
 
 
-def add_spectrum_plot(ax, evals, evecs, fock_trunc):
+def add_spectrum_plot(ax, evals, evecs, fock_trunc, unit="GHz"):
     """
     Adapted from https://stackoverflow.com/questions/35210337/can-i-plot-several-histograms-in-3d/35225919
     """
@@ -126,7 +128,7 @@ def add_spectrum_plot(ax, evals, evecs, fock_trunc):
     # calculate probability of finding eigenvec in each Fock state
     evecs_data = [[float(np.absolute(x) ** 2) for x in evec] for evec in evecs]
     # get eigenfrequencies in GHz and remove offset
-    evals_data = np.real(evals - evals[0]) / 1e9
+    evals_data = np.real(evals - evals[0]) / unit_dict[unit]
 
     for energy, eigenstate in zip(evals_data, evecs_data):
         fock_list = list(range(fock_trunc))
@@ -134,48 +136,44 @@ def add_spectrum_plot(ax, evals, evecs, fock_trunc):
         ax.bar(fock_list, eigenstate, zs=energy, zdir="y", alpha=0.6)
 
     ax.set_xlabel("Fock state N")
-    ax.set_ylabel("Eigenfrequency (GHz)")
+    ax.set_ylabel("Eigenfrequency (%s)" % unit)
     ax.set_zlabel("P(N)")
 
     return
 
 
-def add_energy_diagram_plot(ax, evals, label=None):
+def add_energy_diagram_plot(ax, evals, label=None, unit="GHz"):
 
-    evals_data = np.real(evals - evals[0]) / 1e9
+    evals_data = np.real(evals - evals[0]) / unit_dict[unit]
     ax.scatter(list(range(len(evals_data))), evals_data, label=label)
 
     ax.set_xlabel("Index")
-    ax.set_ylabel("Eigenfrequency (GHz)")
+    ax.set_ylabel("Eigenfrequency (%s)" % unit)
 
     return
 
 
-def add_transition_energies_plot(ax, evals, label=None):
+def add_transition_energies_plot(ax, evals, label=None, unit="GHz"):
 
-    evals_data = np.real(evals - evals[0]) / 1e9
+    evals_data = np.real(evals - evals[0]) / unit_dict[unit]
 
     transit_energies = evals_data[1:] - evals_data[:-1]
     ax.scatter(list(range(len(transit_energies))), transit_energies, label=label)
 
     ax.set_xlabel("Index")
-    ax.set_ylabel("Transition energies (GHz)")
+    ax.set_ylabel("Transition energies (%s)" % unit)
 
     return
 
 
-def add_anharmonicity_plot(ax, evals, label=None):
-
-    evals_data = np.real(evals - evals[0]) / 1e6
+def add_anharmonicity_plot(ax, evals, label=None, unit="MHz"):
+    evals_data = np.real(evals - evals[0]) / unit_dict[unit]
 
     transit_energies = evals_data[1:] - evals_data[:-1]
     anharm = transit_energies[1:] - transit_energies[:-1]
     ax.scatter(list(range(len(anharm))), anharm, label=label)
 
     ax.set_xlabel("Index")
-    ax.set_ylabel("Anharmonicities (MHz)")
+    ax.set_ylabel("Anharmonicities (%s)" % unit)
 
     return
-
-
-
