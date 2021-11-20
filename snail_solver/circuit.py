@@ -94,6 +94,7 @@ class Circuit:
         self.fock_trunc = ancilla.fock_trunc
         self.n_modes = len(freqs)  # Assign one mode for each circ. element
         self.ancilla = ancilla
+        self.phi_rzpf = phi_rzpf
         self.mode_freqs = freqs
         self.ancilla_mode = np.argmax(phi_rzpf)
 
