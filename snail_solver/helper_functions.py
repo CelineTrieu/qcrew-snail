@@ -177,3 +177,49 @@ def add_anharmonicity_plot(ax, evals, label=None, unit="MHz"):
     ax.set_ylabel("Anharmonicities (%s)" % unit)
 
     return
+
+
+def report_H_params(circuit, n_modes, cut_modes):
+    cut_n_modes = len(circuit.phi_rzpf)
+    circuit.ancilla_mode
+    kerr_matrix = np.zeros([n_modes, n_modes])
+    kerr_matrix[:] = np.nan
+    freq_list = np.zeros(n_modes)
+    freq_list[:] = np.nan
+    for mode_index in range(cut_n_modes):
+        matrix_indx1 = cut_modes[mode_index]
+
+        # Get the first transition frequency of each mode after diagonalization
+        freq_list[matrix_indx1] = (
+            circuit.get_eigenstate({mode_index: 1})[0]
+            - circuit.get_eigenstate({mode_index: 0})[0]
+        )
+
+        # Get the dispersive shift between each mode and the ancilla
+        for second_mode_index in range(cut_n_modes):
+            matrix_indx2 = cut_modes[second_mode_index]
+            if second_mode_index == mode_index:
+                # Calculate self-Kerr
+                freq_2 = (
+                    circuit.get_eigenstate({mode_index: 2})[0]
+                    - circuit.get_eigenstate({mode_index: 1})[0]
+                )
+                freq_1 = (
+                    circuit.get_eigenstate({mode_index: 1})[0]
+                    - circuit.get_eigenstate({mode_index: 0})[0]
+                )
+                kerr = freq_2 - freq_1
+            else:
+                freq_2 = (
+                    circuit.get_eigenstate({mode_index: 1, second_mode_index: 1})[0]
+                    - circuit.get_eigenstate({mode_index: 0, second_mode_index: 1})[0]
+                )
+                freq_1 = (
+                    circuit.get_eigenstate({mode_index: 1})[0]
+                    - circuit.get_eigenstate({mode_index: 0})[0]
+                )
+                kerr = freq_2 - freq_1
+
+            kerr_matrix[matrix_indx1, matrix_indx2] = kerr
+
+    return freq_list, kerr_matrix
