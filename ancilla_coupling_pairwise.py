@@ -32,10 +32,10 @@ epr_Lj, epr_freqs, epr_phi_rzpf = get_epr_circuit_params(*_, variation)
 
 # Define circuit and SNAIL parameters
 fock_trunc = 12
-snail_parameters = {"n": 3, "alpha": 0.280, "phi_ext": 0.450 * 2 * np.pi}
-Lj = 14.0e-9
-freqs = [4.76634030e09, 6.12085314e09, 6.94129285e09, 7.83171449e09]
-phi_rzpf = np.array([[0.43528079], [0.01620791], [0.01854175], [0.01716157]])
+snail_parameters = {"n": 3, "alpha": 0.290, "phi_ext": 0.410 * 2 * np.pi}
+Lj = 10e-9
+freqs = [5.04952809e09, 6.11913430e09, 6.93729448e09, 7.82853462e09]
+phi_rzpf = np.array([[0.36789528], [0.02069451], [0.02306255], [0.02154341]])
 
 # Assemble circuit with up to three elements, always including the ancilla
 snail = SNAIL.from_Lj(Lj, snail_parameters)
@@ -48,7 +48,7 @@ for i in range(len(freqs)):
             continue
         cut_modes = [ancilla_mode, i, j]
         cut_freqs = [freqs[index] for index in cut_modes]
-        cut_phis = np.array([[phi_rzpf[index][0]] for index in [ancilla_mode, i, j]])
+        cut_phis = np.array([[phi_rzpf[index][0]] for index in cut_modes])
         # JJ(11672737030.61179)
         ancilla = Ancilla(snail, cut_freqs[np.argmax(cut_phis)], fock_trunc=fock_trunc)
         circuit = Circuit(ancilla, cut_freqs, cut_phis)
