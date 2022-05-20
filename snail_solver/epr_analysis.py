@@ -4,6 +4,7 @@ information needed for quantum analysis.
 """
 
 import pyEPR as epr
+import numpy as np
 
 
 def epr_analysis(HFSS_project_path, HFSS_project_name, junction_info):
