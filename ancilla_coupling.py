@@ -8,8 +8,9 @@ from snail_solver.helper_functions import *
 from snail_solver.epr_analysis import epr_analysis, get_epr_circuit_params
 
 # Executes EPR analysis
-HFSS_project_path = os.getcwd()
-HFSS_project_name = "SNAIL_test"
+
+HFSS_project_path = "C:/Users/qcrew5/Desktop/Fernando"
+HFSS_project_name = "SQUID_rectangular"
 junction_info = [
     (
         "j1",  # assign junction name
@@ -24,20 +25,23 @@ junction_info = [
 ]
 _ = epr_analysis(HFSS_project_path, HFSS_project_name, junction_info)
 # Obtain circuit parameters from pyEPR
-variation = 0
+variation = 1
 epr_Lj, epr_freqs, epr_phi_rzpf = get_epr_circuit_params(*_, variation)
+
+
 
 # Define circuit and SNAIL parameters
 fock_trunc = 18
 n = 3
-alpha = 0.33
-phi_ext = 0.410 * 2 * np.pi
+alpha = 0.29
+phi_ext = 0.39 * 2 * np.pi
+snail_parameters = {"n": 3, "alpha": 0.290, "phi_ext": 0.39 * 2 * np.pi}
 Lj = epr_Lj
 freqs = epr_freqs
 phi_rzpf = epr_phi_rzpf
 
 # Assemble circuit
-snail = SNAIL.from_Lj(Lj, n, alpha, phi_ext)
+snail = SNAIL.from_Lj(Lj, snail_parameters)
 ancilla = Ancilla(snail, freqs[np.argmax(phi_rzpf)], fock_trunc=fock_trunc)
 circuit = Circuit(ancilla, freqs, phi_rzpf)
 
