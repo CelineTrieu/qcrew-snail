@@ -2,3 +2,5 @@ __pycache__
 .vscode
 workspace.code-workspace
 *.aedtresults
+/squid_dynamics_data/*
+animation*
