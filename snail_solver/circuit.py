@@ -116,11 +116,36 @@ class Circuit:
             [phi_rzpf[i, 0] * self.mode_fields[i] for i in range(self.n_modes)]
         )
 
-        self.Hl = dot(self.mode_freqs, self.mode_ns)
-        self.Hnl = ancilla.Ej * ancilla.nl_potential(cos_interiors)
-        self.H = self.Hl + self.Hnl
+        self._Hl = dot(self.mode_freqs, self.mode_ns)
+        self._Hnl = ancilla.Ej * ancilla.nl_potential(cos_interiors)
+        self._H = self._Hl + self._Hnl
 
-        self._ancilla_spectrum, self._circuit_spectrum = None, None
+        self._ancilla_spectrum = None
+        self._en_circuit_spectrum, self._ex_circuit_spectrum = None, None
+        self._COB_matrix = None
+
+    
+    def get_H(self, basis = "fock", basis_cob = None):
+        """Returns the hamiltonian of the system. Allows the user to chose the basis.
+
+        Args:
+            basis (): if "fock", return the hamiltonian in the basis of excitations of the
+            linear part of the circuit. If "eigen", return the hamiltonian diagonalized by
+            transforming with its own COB matrix. If it is a matrix instead, try to transform
+            using qutip method.
+        """
+        if basis_cob is not None:
+            try:
+                return self._H.transform(basis_cob)
+            except:
+                print("Could not identify basis. Returning hamiltonian in Fock basis.")
+                return self._H
+
+        if basis == "fock":
+            return self._H
+        if basis == "eigen":
+            return self._H.transform(self.COB_matrix)
+        
 
     @property
     def ancilla_spectrum(self):
@@ -132,16 +157,67 @@ class Circuit:
             self._ancilla_spectrum = self._calc_ancilla_spectrum()
             return self._ancilla_spectrum
 
+    def get_circuit_spectrum(self, order = "energy"):
+        """Eigenvalues and eigenvectors of the full hamiltonian of the circuit.
+        
+        Args:
+            order (str): if "energy", return in lowest-to-highest order, as given by qutip.
+            If "excitation", return spectrum ordered by the number of excitations of each mode,
+            with the first mode being more significative.
+        """
+
+        if not (self._en_circuit_spectrum and self._ex_circuit_spectrum):
+            self._en_circuit_spectrum = self.get_H().eigenstates()
+            self._ex_circuit_spectrum = self._reorder_circuit_excitation_spectrum()
+            
+        if order == "energy":
+            return self._en_circuit_spectrum
+
+        elif order == "excitation":
+            return self._ex_circuit_spectrum    
+
     @property
-    def circuit_spectrum(self):
-        """Eigenvalues and eigenvectors of the full hamiltonian of the circuit."""
-        if self._circuit_spectrum:
-            return self._circuit_spectrum
+    def COB_matrix(self):
+        """Matrix that transforms operators from Fock state basis to the
+        basis of eigenvectors of the system.
+        """
+        if self._COB_matrix:
+            return self._COB_matrix
 
         else:
-            self._circuit_spectrum = self.H.eigenstates()
-            return self._circuit_spectrum
+            self._COB_matrix = self._calc_change_of_basis_matrix()
+            return self._COB_matrix
 
+    def _reorder_circuit_excitation_spectrum(self):
+        """The purpose of this method is to reorder the eigenvectors according to
+        the number of excitations in each mode. Assumes the eigenvectors of the 
+        whole system are similar to the eigenvectors of the individual modes 
+        (valid in the dispersive regime).
+        """
+
+        # Gets eigenvectors of each individual mode
+        mode_eigenvec = [self.get_H().ptrace(i).eigenstates()[1] 
+                         for i in range(len(self.mode_freqs))]
+
+        # get evecs in the
+        evals, evecs = self._en_circuit_spectrum
+
+        evecs_labeled = []
+        for i in range(len(evecs)):
+            label = ()
+            # Find the number of excitations in each eigenvector
+            for mode in range(len(self.mode_freqs)):
+                indx = np.argmax([qt.metrics.fidelity(evecs[i].ptrace(mode), qt.ket2dm(x)) 
+                                  for x in mode_eigenvec[mode]])
+                label += (indx,)
+            evecs_labeled.append((evecs[i], evals[i], label))
+
+        evecs_evals_reordered = sorted(evecs_labeled, key=lambda x: x[2])
+        evecs_reordered = [x[0] for x in evecs_evals_reordered]
+        evals_reordered = [x[1] for x in evecs_evals_reordered]
+
+        return evals_reordered, evecs_reordered
+        
     def _calc_ancilla_spectrum(self):
         """Calculate the spectrum of the isolated ancilla.
 
@@ -167,10 +243,12 @@ class Circuit:
         that has larger overlap.
 
         Args:
-            exc (dict): dictionary in which the keys are mode indexes (same indexing as self.mode_freqs) and the values are the number of excitations.
+            exc (dict): dictionary in which the keys are mode indexes (same indexing as 
+            self.mode_freqs) and the values are the number of excitations.
 
         Returns:
-            tuple: (eval, evec), in which evec is the corresponding eigenstate of the circuit hamiltonian and eval is its eigenvalue (Hz).
+            tuple: (eval, evec), in which evec is the corresponding eigenstate of the 
+            circuit hamiltonian and eval is its eigenvalue (Hz).
         """
 
         # Get eigestates of linear modes
@@ -188,7 +266,18 @@ class Circuit:
         def distance(s2):
             return (evec_guess.dag() * s2[1]).norm()
 
-        evals, evecs = self.circuit_spectrum
+        evals, evecs = self.get_circuit_spectrum()
         eval, evec = max(zip(evals, evecs), key=distance)
 
         return eval, evec
+
+    def _calc_change_of_basis_matrix(self):
+        """
+        Calculates the matrix that transforms operators from Fock state basis to the
+        basis of eigenvectors of the system. Keeps the structure of the hamiltonian
+        by ordering basis per excitation.
+        """
+
+        _, evecs = self.get_circuit_spectrum(order = "excitation")
+        COB_matrix = np.concatenate([np.array(x) for x in evecs], axis = 1).T
+        return COB_matrix
