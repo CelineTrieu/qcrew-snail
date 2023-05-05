@@ -14,11 +14,10 @@ from snail_solver.helper_functions import *
 # Hamiltonian coefficients are expressed in Hz.
 
 fock_trunc = 10
-
 def get_interpolated_phi_zpf():
     # Get phi zpf data as obtained from pyEPR distributed analysis and interpolate
-    phase_list = np.load("C:/Users/Aftershock/Documents/qcrew-fastflux/squid_highf_data/ljs_and_phase.npz")["phase"]
     phi_zpf = np.load('C:/Users/Aftershock/Documents/qcrew-fastflux/squid_highf_data/phi_rzpf_high_f_squid.npz')["arr_0"]
+    phase_list = np.load("C:/Users/Aftershock/Documents/qcrew-fastflux/squid_highf_data/ljs_and_phase.npz")["phase"]
     cavity_phi_zpf = interp1d(phase_list, phi_zpf[:, 0])
     ancilla_phi_zpf = interp1d(phase_list, phi_zpf[:, 1])
     resonator_phi_zpf = interp1d(phase_list, phi_zpf[:, 2])
@@ -44,7 +43,7 @@ ljs = get_interpolated_ljs()
 cavity_phi_zpf, ancilla_phi_zpf, resonator_phi_zpf = get_interpolated_phi_zpf()
 cavity_fs, ancilla_fs, resonator_fs = get_interpolated_ansys_fs()
 
-def build_circuit(phase):
+def build_circuit(phase, reference_operators = None):
     # The phase input must be within the interpolation range given by the max and min values of phase
     # in the file ljs_and_phase.npz
 
@@ -58,9 +57,18 @@ def build_circuit(phase):
     # Assemble circuit
     squid = JJ(Ej)
     ancilla = Ancilla(squid, freqs[np.argmax(phi_rzpf)], fock_trunc=fock_trunc)
-    circuit = Circuit(ancilla, freqs, phi_rzpf)
+    circuit = Circuit(ancilla, freqs, phi_rzpf, reference_operators = reference_operators)
 
     return circuit
+
+# reference_circuit = build_circuit(0.4)
+# ref_operators = reference_circuit.calc_ancilla_flux_charge_operators()
+# circuit_A = build_circuit(0.41, reference_operators = ref_operators)
+# circuit_B = build_circuit(0.41)
+# # reference_circuit.get_H()
+# circuit_A.get_H()
+# print("CIRCUIT B")
+# circuit_B.get_H()
 
 def square_envelope(A, t0, length):
     def envelope(t, args):
@@ -93,9 +101,6 @@ hamiltonian_dictionary = {} # store pre-existing solutions
 t_list_hamiltonian = np.arange(0, 40, 1)
 t_list_simulation = np.arange(0, 40, 0.1)
 t_list_simulation_reshaped = []
-
-#print(t_list_simulation[t_list_hamiltonian[6] > t_list_simulation])
-
 for i in range(len(t_list_hamiltonian)-1):
     t_current = t_list_hamiltonian[i]
     t_next = t_list_hamiltonian[i+1]
@@ -108,6 +113,8 @@ t_current = t_list_hamiltonian[-1]
 a = t_current <= t_list_simulation
 t_list_simulation_reshaped.append(t_list_simulation[a])
 initial_circuit = None
+reference_circuit = build_circuit(flux_offset)
+ref_operators = None #reference_circuit.calc_ancilla_flux_charge_operators()
 for t_ham in t_list_hamiltonian:
     # get flux for that hamiltonian time
     flux = flux_pulse(t_ham, '') + flux_offset
@@ -115,16 +122,22 @@ for t_ham in t_list_hamiltonian:
     if flux in hamiltonian_dictionary.keys():
         hamiltonian = hamiltonian_dictionary[flux]
     else:
-        circuit = build_circuit(flux)
+        circuit = build_circuit(flux, reference_operators = ref_operators)
         # save initial circuit
         if not initial_circuit:
             initial_circuit = circuit
-        hamiltonian = circuit.H
+        hamiltonian = circuit.get_H()
         hamiltonian_dictionary[flux] = hamiltonian
     
     hamiltonian_list.append(hamiltonian)
 
+# print(b0, flux_op, charge_op, circuit_ref.coupling_factor)
+# circuit = build_circuit(0.5)
+# circuit_operators = circuit.calc_mode_operators(b0, flux_op, charge_op)
+print("states 0 and 1")
 initial_state =  (initial_circuit.get_eigenstate({1: 0})[1] + initial_circuit.get_eigenstate({1: 1})[1]).unit()
+print("^^^^^")
+ref_operators = initial_circuit.calc_ancilla_flux_charge_operators()
 f01 = initial_circuit.get_eigenstate({1: 1})[0] - initial_circuit.get_eigenstate({1: 0})[0]
 offset = initial_circuit.get_eigenstate({1: 0})[0]
 ancilla_number_op = sum([np.sqrt(i)*qutip.ket2dm(initial_circuit.get_eigenstate({1: i})[1])
@@ -149,8 +162,8 @@ for i in range(len(t_list_simulation_reshaped)):
     # concatenate list of states while excluding initial state
     state_list += result.states[1::]
 
-print(state_list[0].ptrace(1))
-print(state_list[-1].ptrace(1))
+print(state_list[0].ptrace(1).diag())
+print(state_list[-1].ptrace(1).diag())
 # plot wigner function
 max_range = 2
 displ_array = np.linspace(-max_range, max_range, 51)
