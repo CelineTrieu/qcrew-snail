@@ -9,16 +9,17 @@ from snail_solver.epr_analysis import epr_analysis, get_epr_circuit_params
 
 # Define circuit and SNAIL parameters
 fock_trunc = 12
-Lj = 7.5e-9
+Lj = 7.13e-09
 Ej = 1 / (2 * np.pi * hbar * Lj) * (flux_quantum / 2 / np.pi) ** 2
-freqs = np.array([5711619202.44, 5805423210.32, 6995467289.219999])
-phi_rzpf = np.array([[0.04554338], [0.35613048], [0.03060912]])
+freqs = np.array([5727602400.450001, 6180666857.240001])
+phi_rzpf = np.array([[0.00588067], [0.35791346]])
 
 # Assemble circuit
 squid = JJ(Ej)
 ancilla = Ancilla(squid, freqs[np.argmax(phi_rzpf)], fock_trunc=fock_trunc)
 circuit = Circuit(ancilla, freqs, phi_rzpf)
-
+print(circuit.coupling_factor)
+"""
 # Plotting
 fig, axes = plt.subplots(2, 2)
 # Ancilla spectrum when resonator is in ground state
@@ -63,4 +64,4 @@ axes[1].set_ylabel(r"$\chi$' (kHz)")
 axes[1].set_xlabel("Index")
 axes[0].grid()
 axes[1].grid()
-plt.show()
+plt.show()"""

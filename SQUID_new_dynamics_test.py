@@ -1,6 +1,5 @@
 import numpy as np
 import qutip
-from qutip.wigner import wigner
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from scipy.interpolate import interp1d
@@ -9,6 +8,7 @@ from snail_solver.single_JJ_element import JJ
 from snail_solver.ancilla import Ancilla
 from snail_solver.circuit import Circuit
 from snail_solver.helper_functions import *
+
 
 # Time unit is sec and frequency is Hz.
 # Hamiltonian coefficients are expressed in Hz.
@@ -88,18 +88,16 @@ def gaussian_envelope(A, t0, length, sigma):
     return envelope
 
 flux_offset = 0.4
-flux_pulse_t0 = 0 # start of the pulse
+flux_pulse_t0 = 10 # start of the pulse
 flux_pulse_A = 0.65 - flux_offset # amplitude in reduced flux (rad)
-flux_pulse_len = 40  
-flux_pulse_sigma = 5
-#flux_pulse = gaussian_envelope(flux_pulse_A, flux_pulse_t0, flux_pulse_len, flux_pulse_sigma)
+flux_pulse_len = 80  
 flux_pulse = square_envelope(flux_pulse_A, flux_pulse_t0, flux_pulse_len)
 hamiltonian_list = []
 reshaped_t_list_simulation = []
 hamiltonian_dictionary = {} # store pre-existing solutions
 
-t_list_hamiltonian = np.arange(0, 40, 1)
-t_list_simulation = np.arange(0, 40, 0.1)
+t_list_hamiltonian = np.arange(0, 50, 2)
+t_list_simulation = np.arange(0, 50, 0.5)
 t_list_simulation_reshaped = []
 for i in range(len(t_list_hamiltonian)-1):
     t_current = t_list_hamiltonian[i]
@@ -114,7 +112,7 @@ a = t_current <= t_list_simulation
 t_list_simulation_reshaped.append(t_list_simulation[a])
 initial_circuit = None
 reference_circuit = build_circuit(flux_offset)
-ref_operators = None #reference_circuit.calc_ancilla_flux_charge_operators()
+ref_operators = reference_circuit.calc_ancilla_flux_charge_operators()
 for t_ham in t_list_hamiltonian:
     # get flux for that hamiltonian time
     flux = flux_pulse(t_ham, '') + flux_offset
@@ -134,20 +132,25 @@ for t_ham in t_list_hamiltonian:
 # print(b0, flux_op, charge_op, circuit_ref.coupling_factor)
 # circuit = build_circuit(0.5)
 # circuit_operators = circuit.calc_mode_operators(b0, flux_op, charge_op)
-print("states 0 and 1")
-initial_state =  (initial_circuit.get_eigenstate({1: 0})[1] + initial_circuit.get_eigenstate({1: 1})[1]).unit()
-print("^^^^^")
-ref_operators = initial_circuit.calc_ancilla_flux_charge_operators()
-f01 = initial_circuit.get_eigenstate({1: 1})[0] - initial_circuit.get_eigenstate({1: 0})[0]
+initial_state =  (initial_circuit.get_eigenstate({0:1, 1:1})[1] + initial_circuit.get_eigenstate({0:0, 1: 1})[1]).unit()
+f01_q = initial_circuit.get_eigenstate({1: 1})[0] - initial_circuit.get_eigenstate({1: 0})[0]
+f01_c = initial_circuit.get_eigenstate({0: 1})[0] - initial_circuit.get_eigenstate({0: 0})[0]
 offset = initial_circuit.get_eigenstate({1: 0})[0]
-ancilla_number_op = sum([np.sqrt(i)*qutip.ket2dm(initial_circuit.get_eigenstate({1: i})[1])
-                         for i in range(len(circuit.ancilla_spectrum[0]))])
-                         
-print(f01)
-print(offset)
+# ancilla_number_op = sum([np.sqrt(i)*qutip.ket2dm(initial_circuit.get_eigenstate({1: i})[1])
+#                          for i in range(len(circuit.ancilla_spectrum[0]))])
+# cavity_number_op = sum([np.sqrt(i)*qutip.ket2dm(initial_circuit.get_eigenstate({0: i})[1])
+#                          for i in range(fock_trunc)])
+a = qutip.destroy(fock_trunc)
+mode_operators = [
+    tensor_out(a, i, fock_trunc, 2)
+    for i in range(2)
+]
+cavity_number_op = mode_operators[0]
+ancilla_number_op = mode_operators[1]
+
 # Convert hamiltonian units to GHz
 a = qutip.tensor(qutip.qeye(fock_trunc), qutip.destroy(fock_trunc))
-hamiltonian_list = [(H-offset-f01*ancilla_number_op)/1e9 for H in hamiltonian_list] 
+hamiltonian_list = [(H-offset-f01_q*ancilla_number_op - f01_c*cavity_number_op)/1e9 for H in hamiltonian_list] 
 
 # simulate iteratively
 state = initial_state*initial_state.dag()
@@ -156,19 +159,48 @@ for i in range(len(t_list_simulation_reshaped)):
     print(i)
     H = hamiltonian_list[i]
     t_sim = t_list_simulation_reshaped[i]
-    result = qutip.mesolve(H, state, t_sim, options=qutip.Options(nsteps=3000))
+    result = qutip.mesolve(H, state, t_sim, options=qutip.Options(nsteps=40000))
     # start next one where this one ended
     state = result.states[-1] 
     # concatenate list of states while excluding initial state
     state_list += result.states[1::]
 
-print(state_list[0].ptrace(1).diag())
-print(state_list[-1].ptrace(1).diag())
 # plot wigner function
 max_range = 2
-displ_array = np.linspace(-max_range, max_range, 51)
-wigner_list = [wigner(x.ptrace(1), displ_array, displ_array) for x in state_list[::5]]
+displ_grid = np.linspace(-max_range, max_range, 51)
+animate_wigner(result, 'animation_dispersive_shift.gif', displ_grid, skip = 2)
 
+
+"""
+wigner_list0 = [wigner(x.ptrace(0), displ_array, displ_array) for x in result.states[::2]]
+wigner_list1 = [wigner(x.ptrace(1), displ_array, displ_array) for x in result.states[::2]]
+
+
+# create first plot
+fig, axes = plt.subplots(1,2)
+axes[0].set_aspect('equal', 'box')
+axes[1].set_aspect('equal', 'box')
+fig.set_size_inches(20, 8)
+fig.tight_layout()
+wigner_f0 = wigner(result.states[0].ptrace(0), displ_array, displ_array)
+wigner_f1 = wigner(result.states[0].ptrace(1), displ_array, displ_array)
+cont0 = axes[0].pcolormesh(displ_array, displ_array, wigner_f0, cmap = "bwr")
+cont1 = axes[1].pcolormesh(displ_array, displ_array, wigner_f1, cmap = "bwr")
+cb = fig.colorbar(cont0)
+
+# refresh function
+def animated_wigner(frame):
+    wigner_f0 = wigner_list0[frame]
+    wigner_f1 = wigner_list1[frame]
+    cont0 = axes[0].pcolormesh(displ_array, displ_array, wigner_f0, cmap = "bwr")
+    cont1 = axes[1].pcolormesh(displ_array, displ_array, wigner_f1, cmap = "bwr")
+    cont0.set_clim(-1/np.pi, 1/np.pi)
+    cont1.set_clim(-1/np.pi, 1/np.pi)
+
+anim = FuncAnimation(fig, animated_wigner, frames=len(wigner_list0), interval=100)
+anim.save('animation_dispersive_shift.gif', writer='imagemagick')
+"""
+"""
 # create first plot
 fig, axes = plt.subplots()
 axes.set_aspect('equal', 'box')
@@ -186,3 +218,4 @@ def animated_wigner(frame):
 
 anim = FuncAnimation(fig, animated_wigner, frames=len(wigner_list), interval=100)
 anim.save('animation.gif', writer='imagemagick')
+"""

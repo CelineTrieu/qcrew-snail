@@ -8,7 +8,10 @@ Code taken from https://www.py4u.net/discuss/19528.
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import qutip
+from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
+from functools import reduce
 
 e_charge = 1.602e-19
 hbar = 1.054e-34
@@ -223,3 +226,65 @@ def report_H_params(circuit, n_modes, cut_modes):
             kerr_matrix[matrix_indx1, matrix_indx2] = kerr
 
     return freq_list, kerr_matrix
+
+
+def tensor_out(op, loc, fock_trunc, n):
+    """Expands a single-mode operator into a multi-mode Hilbert space.
+
+    The operator op tensored with identities at locations other than loc. fock_trunc is
+    the dimension of each individual operator and n is the number of modes.
+
+    Args:
+        op (Qobj): Operator acting on a given mode.
+        loc (int): Index of the mode.
+        fock_trunc (int): Dimension of each operator.
+        n (int): number of modes considered.
+
+    Returns:
+        Qobj: Operator op tensored up to a larger Hilbert space.
+    """
+
+    op_list = [qutip.qeye(fock_trunc) for i in range(n)]
+    op_list[loc] = op
+    return reduce(qutip.tensor, op_list)
+
+def animate_wigner(results, filename, displ_array, skip = 1):
+    """
+    skip is the number of frames skipped during plotting
+    """
+
+    # check number of modes
+    n = results.shape[0]
+
+    # create plot
+    fig, axes = plt.subplots(1, n)
+    fig.set_size_inches(20, 8)
+    fig.tight_layout()
+    
+    wigner_list = []
+    cont_list = []
+    
+    # Iterate over modes
+    for i in range(n):
+        # Get simulation results
+        results_mode = results[i]
+        # Calculate wigner functions over time
+        wigner_mode = [qutip.wigner(x.ptrace(i), displ_array, displ_array) for x in results_mode.states[::skip]]
+        # Plot the first wigner function
+        axes[i].set_aspect('equal', 'box')
+        cont_mode = axes[i].pcolormesh(displ_array, displ_array, wigner_mode[0], cmap = "bwr")
+        wigner_list.append(wigner_mode)
+        cont_list.append(cont_mode)
+
+    # Set colorbar
+    cb = fig.colorbar(cont_list[0])
+
+    # refresh function
+    def plot_frame(frame):
+        for i in range(n):
+            wigner_frame = wigner_list[i][frame]
+            cont = axes[i].pcolormesh(displ_array, displ_array, wigner_frame, cmap = "bwr")
+            cont.set_clim(-1/np.pi, 1/np.pi)
+
+    anim = FuncAnimation(fig, plot_frame, frames=len(), interval=100)
+    anim.save(filename, writer='imagemagick')

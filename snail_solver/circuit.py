@@ -202,8 +202,8 @@ class Circuit:
         a0 = bare_mode_operators[self.ancilla_mode]
         b0 = bare_mode_operators[(self.ancilla_mode-1)%2]
         f0 = self.bare_mode_freqs[self.ancilla_mode]
-        flux_operator = np.sqrt(f0*self.ancilla.Lj/2) * (a0 + a0.dag())
-        charge_operator = np.sqrt(1/f0/self.ancilla.Lj/2) * (a0 + a0.dag())
+        flux_operator = np.sqrt(f0*self.ancilla.Lj/2) * (a0.dag() + a0)
+        charge_operator = 1j*np.sqrt(1/f0/self.ancilla.Lj/2) * (a0.dag() - a0)
 
         return b0, flux_operator, charge_operator
         
