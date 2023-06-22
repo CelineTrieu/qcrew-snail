@@ -248,16 +248,13 @@ def tensor_out(op, loc, fock_trunc, n):
     op_list[loc] = op
     return reduce(qutip.tensor, op_list)
 
-def animate_wigner(results, filename, displ_array, skip = 1):
+def animate_wigner(results, n_modes, filename, displ_array, skip = 1):
     """
     skip is the number of frames skipped during plotting
     """
 
-    # check number of modes
-    n = results.shape[0]
-
     # create plot
-    fig, axes = plt.subplots(1, n)
+    fig, axes = plt.subplots(1, n_modes)
     fig.set_size_inches(20, 8)
     fig.tight_layout()
     
@@ -265,11 +262,10 @@ def animate_wigner(results, filename, displ_array, skip = 1):
     cont_list = []
     
     # Iterate over modes
-    for i in range(n):
+    for i in range(n_modes):
         # Get simulation results
-        results_mode = results[i]
         # Calculate wigner functions over time
-        wigner_mode = [qutip.wigner(x.ptrace(i), displ_array, displ_array) for x in results_mode.states[::skip]]
+        wigner_mode = [qutip.wigner(x.ptrace(i), displ_array, displ_array) for x in results.states[::skip]]
         # Plot the first wigner function
         axes[i].set_aspect('equal', 'box')
         cont_mode = axes[i].pcolormesh(displ_array, displ_array, wigner_mode[0], cmap = "bwr")
@@ -281,10 +277,10 @@ def animate_wigner(results, filename, displ_array, skip = 1):
 
     # refresh function
     def plot_frame(frame):
-        for i in range(n):
+        for i in range(n_modes):
             wigner_frame = wigner_list[i][frame]
             cont = axes[i].pcolormesh(displ_array, displ_array, wigner_frame, cmap = "bwr")
             cont.set_clim(-1/np.pi, 1/np.pi)
 
-    anim = FuncAnimation(fig, plot_frame, frames=len(), interval=100)
+    anim = FuncAnimation(fig, plot_frame, frames=len(wigner_list[0]), interval=100)
     anim.save(filename, writer='imagemagick')
