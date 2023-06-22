@@ -31,7 +31,7 @@ sim.initial_state = qutip.tensor(qutip.fock(fock_trunc, n = 0), qutip.fock(fock_
 
 # Add pulses
 a = tensor_out(qutip.destroy(fock_trunc), 1, fock_trunc, 2) # ancilla destruction op
-wf_1 = SquareWaveform(1.5e6, 0, 20e-9, 100e-9)
+wf_1 = SquareWaveform(1.5e6, 6.181e9*2*np.pi, 20e-9, 100e-9)
 pulse_1 = DrivePulse(a, wf_1)
 sim.add_pulse(pulse_1)
 # Simulate
