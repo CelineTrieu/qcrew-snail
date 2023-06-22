@@ -9,8 +9,7 @@ fock_trunc = 10
 # Create SNAIL
 snail_parameters = {"n": 3, "alpha": 0.290, "phi_ext": 0.410 * 2 * np.pi}
 ancilla = SNAIL(**snail_parameters, fock_trunc = fock_trunc)
-
-ancilla = JJ(fock_trunc = fock_trunc)
+# ancilla = JJ(fock_trunc = fock_trunc)
 
 # Define constant circuit parameters: SNAIL + 1 resonator
 Lj = 9.0e-9
@@ -26,3 +25,4 @@ circuit.set_circuit_parameters()
 circuit.hamiltonian
 circuit.circuit_spectrum
 circuit.ancilla_spectrum
+print(circuit.calc_bare_mode_freqs())
