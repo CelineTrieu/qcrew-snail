@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from scipy.interpolate import interp1d
 
-from snail_solver.single_JJ_element import JJ
-from snail_solver.ancilla import Ancilla
+from snail_solver.josephson_element.JJ_element import JJ
+from snail_solver.ancillae import Ancilla
 from snail_solver.circuit import Circuit
 from snail_solver.helper_functions import *
 
