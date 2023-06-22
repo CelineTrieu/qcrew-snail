@@ -7,12 +7,10 @@ zero-point fluctuations and a list of mode frequencies.
 
 import qutip as qt
 import numpy as np
-from scipy.interpolate import interp1d
 from functools import reduce
 
-from snail_solver.ancilla import Ancilla
+from snail_solver.ancillae import Ancilla
 from snail_solver.helper_functions import *
-
 
 def tensor_out(op, loc, fock_trunc, n):
     """Expands a single-mode operator into a multi-mode Hilbert space.
@@ -79,8 +77,7 @@ class Circuit:
     def __init__(
         self,
         ancilla,
-        freqs,
-        phi_rzpf,
+        circuit_parameters,
         reference_operators = None
     ):
         """Define a circuit composed of multiple modes, one of which is an ancilla.
@@ -99,25 +96,57 @@ class Circuit:
             Tuple containing (cavity annihilation operator, ancilla flux operator, ancilla charge operator) as
             reference for building the operators of this circuit
         """
-
-        self.fock_trunc = ancilla.fock_trunc
-        self.n_modes = len(freqs)  # Assign one mode for each circ. element
+    
+        self.circuit_parameters = circuit_parameters
+        self.circuit_parameters_value = None
         self.ancilla = ancilla
-        self.phi_rzpf = phi_rzpf
-        self.mode_freqs = freqs
-        self.ancilla_mode = np.argmax(phi_rzpf)
-        self.bogoliubov_factors = self.calc_bogoliubov_factors()
-        self.coupling_factor, self.bare_mode_freqs = self.calc_bare_mode_freqs()
+        self.fock_trunc = ancilla.fock_trunc
         self.reference_operators = reference_operators
 
-        self._ancilla_spectrum = None
+        self.phi_rzpf = None
+        self.freqs = None
+        self.ancilla_index = None
+
         self._en_circuit_spectrum, self._ex_circuit_spectrum = None, None
-        self._COB_matrix = None
+
+        self.circuit_H_memory = {}
+        self.ancilla_spectrum_memory = {}
+        self.circuit_spectrum_memory = {} # circuit spectrum ordered by eigenenergy
+
+
+    
+    @property
+    def hamiltonian(self):
+        """Hamiltonian of the circuit."""
+        return self._calc_hamiltonian()
+
+    @property
+    def ancilla_spectrum(self):
+        """Eigenvalues and eigenvectors of the hamiltonian of the isolated ancilla."""
+        return self._calc_ancilla_spectrum()
+    
+    @property
+    def circuit_spectrum(self):
+        """Eigenvalues and eigenvectors of the hamiltonian of the circuit."""
+        return self._calc_circuit_spectrum()
+    
+    def set_circuit_parameters(self, *args):
+        print("\nSetting circuit parameters")
+        Lj, freqs, phi_rzpf = self.circuit_parameters.get(*args)
+        
+        # update properties
+        self.circuit_parameters_value = "constant" if args == () else args
+        self.phi_rzpf = phi_rzpf
+        self.freqs = freqs
+        self.ancilla_index = np.argmax(phi_rzpf)
+        self.ancilla.freq = self.freqs[self.ancilla_index]
+        self.ancilla.Lj = Lj
+        return
 
     def calc_bogoliubov_factors(self):
         # Only works for two modes for now
-        ancilla_mode = self.ancilla_mode
-        cavity_mode = (self.ancilla_mode - 1)%2
+        ancilla_mode = self.ancilla_index
+        cavity_mode = (self.ancilla_index - 1) % 2
 
         # Find angle of Bogoliubov transformation
         phi_rzpf_ancilla = self.phi_rzpf[ancilla_mode, 0]
@@ -131,25 +160,25 @@ class Circuit:
     def calc_bare_mode_freqs(self):
         # Calculate pre-hybridization parameters
         # Only works for two modes for now
-        ancilla_mode = self.ancilla_mode
-        cavity_mode = (self.ancilla_mode-1)%2
-        cos_lambda, sin_lambda = self.bogoliubov_factors
+        ancilla_mode = self.ancilla_index
+        cavity_mode = (self.ancilla_index-1)%2
+        cos_lambda, sin_lambda = self.calc_bogoliubov_factors()
 
-        bare_mode_freqs = [0,0]
-        bare_mode_freqs[ancilla_mode] = cos_lambda**2*self.mode_freqs[ancilla_mode] + \
-                                        sin_lambda**2*self.mode_freqs[cavity_mode]
-        bare_mode_freqs[cavity_mode] = cos_lambda**2*self.mode_freqs[cavity_mode] + \
-                                       sin_lambda**2*self.mode_freqs[ancilla_mode]
-        coupling_factor = (self.mode_freqs[ancilla_mode] - self.mode_freqs[cavity_mode])*sin_lambda*cos_lambda
+        bare_mode_freqs = [0, 0]
+        bare_mode_freqs[ancilla_mode] = cos_lambda**2*self.freqs[ancilla_mode] + \
+                                        sin_lambda**2*self.freqs[cavity_mode]
+        bare_mode_freqs[cavity_mode] = cos_lambda**2*self.freqs[cavity_mode] + \
+                                       sin_lambda**2*self.freqs[ancilla_mode]
+        coupling_factor = (self.freqs[ancilla_mode] - self.freqs[cavity_mode])*sin_lambda*cos_lambda
 
         return coupling_factor, bare_mode_freqs
     
     def calc_bare_mode_operators(self, mode_operators):
         # Only works for two modes for now
-        ancilla_mode = self.ancilla_mode
-        cavity_mode = (self.ancilla_mode-1)%2
+        ancilla_mode = self.ancilla_index
+        cavity_mode = (self.ancilla_index-1) % 2
 
-        cos_lambda, sin_lambda = self.bogoliubov_factors
+        cos_lambda, sin_lambda = self.calc_bogoliubov_factors()
 
         bare_mode_operators = [0,0]
         bare_mode_operators[ancilla_mode] = cos_lambda*mode_operators[ancilla_mode] - \
@@ -161,10 +190,10 @@ class Circuit:
     
     def calc_dressed_mode_operators(self, bare_mode_operators):
         # Only works for two modes for now
-        ancilla_mode = self.ancilla_mode
-        cavity_mode = (self.ancilla_mode-1)%2
+        ancilla_mode = self.ancilla_index
+        cavity_mode = (self.ancilla_index-1)%2
     
-        cos_lambda, sin_lambda = self.bogoliubov_factors
+        cos_lambda, sin_lambda = self.calc_bogoliubov_factors()
 
         # get dressed mode operators 
         mode_operators = [0,0]
@@ -177,11 +206,11 @@ class Circuit:
 
     def calc_mode_operators(self, cavity_operator, flux_operator, charge_operator):
         # Only works for two modes for now
-        ancilla_mode = self.ancilla_mode
-        cavity_mode = (self.ancilla_mode-1)%2
+        ancilla_mode = self.ancilla_index
+        cavity_mode = (self.ancilla_index-1)%2
         
         # get bare mode operators from circuit operators
-        f0 = self.bare_mode_freqs[ancilla_mode]
+        f0 = self.calc_bare_mode_freqs()[ancilla_mode]
         bare_mode_operators = [0,0]
         bare_mode_operators[ancilla_mode] = np.sqrt(1/(2*f0*self.ancilla.Lj))*flux_operator + \
                                             1j*np.sqrt(f0*self.ancilla.Lj/(2))*charge_operator
@@ -193,22 +222,24 @@ class Circuit:
     def calc_ancilla_flux_charge_operators(self):
         # Build bare mode operators and find ancilla circuit operators
         # Choose the hybridized Fock states as basis
+
+        n_modes = len(self.freqs)
         a = qt.destroy(self.fock_trunc)
         mode_operators = [
-            tensor_out(a, i, self.fock_trunc, self.n_modes)
-            for i in range(self.n_modes)
+            tensor_out(a, i, self.fock_trunc, n_modes)
+            for i in range(n_modes)
         ]
         bare_mode_operators = self.calc_bare_mode_operators(mode_operators)
-        a0 = bare_mode_operators[self.ancilla_mode]
-        b0 = bare_mode_operators[(self.ancilla_mode-1)%2]
-        f0 = self.bare_mode_freqs[self.ancilla_mode]
+        a0 = bare_mode_operators[self.ancilla_index]
+        b0 = bare_mode_operators[(self.ancilla_index-1)%2]
+        f0 = self.calc_bare_mode_freqs()[self.ancilla_index]
         flux_operator = np.sqrt(f0*self.ancilla.Lj/2) * (a0.dag() + a0)
         charge_operator = 1j*np.sqrt(1/f0/self.ancilla.Lj/2) * (a0.dag() - a0)
 
         return b0, flux_operator, charge_operator
         
     
-    def get_H(self, basis = "fock", basis_cob = None):
+    def _calc_hamiltonian(self, basis = "fock", basis_cob = None):
         """Returns the hamiltonian of the system. Allows the user to chose the basis.
 
         Args:
@@ -218,57 +249,56 @@ class Circuit:
             using qutip method.
         """
 
-        if self.reference_operators:
-            mode_operators = self.calc_mode_operators(*self.reference_operators)
-            mode_fields = [x + x.dag() for x in mode_operators]
-            mode_ns = [x.dag()*x for x in mode_operators]
+        n_modes = len(self.freqs)
 
-        else:
-            # get auxiliary operators    
-            a = qt.destroy(self.fock_trunc)
-            ad = a.dag()
-            n = qt.num(self.fock_trunc)
-            # instantiate qutip operators for each hybridized mode
-            mode_fields = [
-                tensor_out(a + ad, i, self.fock_trunc, self.n_modes)
-                for i in range(self.n_modes)
-            ]
-            mode_ns = [
-                tensor_out(n, i, self.fock_trunc, self.n_modes) for i in range(self.n_modes)
-            ]
+        H = self.circuit_H_memory.get(self.circuit_parameters_value)
+        if not H:
+            print("Calculating hamiltonian...", end = ' ')
+            if self.reference_operators:
+                mode_operators = self.calc_mode_operators(*self.reference_operators)
+                mode_fields = [x + x.dag() for x in mode_operators]
+                mode_ns = [x.dag()*x for x in mode_operators]
 
-        # build hamiltonian.
-        cos_interiors = sum(
-            [self.phi_rzpf[i, 0] * mode_fields[i] for i in range(self.n_modes)]
-        )
-        self._Hl = dot(self.mode_freqs, mode_ns)
-        self._Hnl = self.ancilla.Ej * self.ancilla.nl_potential(cos_interiors)
-        self._H = self._Hl + self._Hnl
+            else:
+                # get auxiliary operators    
+                a = qt.destroy(self.fock_trunc)
+                ad = a.dag()
+                n = qt.num(self.fock_trunc)
+                # instantiate qutip operators for each hybridized mode
+                mode_fields = [
+                    tensor_out(a + ad, i, self.fock_trunc, n_modes)
+                    for i in range(n_modes)
+                ]
+                mode_ns = [
+                    tensor_out(n, i, self.fock_trunc, n_modes) for i in range(n_modes)
+                ]
+
+            # build hamiltonian
+            cos_interiors = sum(
+                [self.phi_rzpf[i, 0] * mode_fields[i] for i in range(n_modes)]
+            )
+            Hl = dot(self.freqs, mode_ns)
+            Hnl = self.ancilla.Ej * self.ancilla.nl_potential(cos_interiors)
+            H = Hl + Hnl
+            self.circuit_H_memory[self.circuit_parameters_value] = H
+            print("Done!")
+        #else:
+            #print("Hamiltonian found in memory. Proceeding...")
 
         if basis_cob is not None:
             try:
-                return self._H.transform(basis_cob)
+                return H.transform(basis_cob)
             except:
                 print("Could not identify basis. Returning hamiltonian in Fock basis.")
-                return self._H
+                return H
 
         if basis == "fock":
-            return self._H
+            return H
         if basis == "eigen":
-            return self._H.transform(self.COB_matrix)
-        
+            COB_matrix = self._calc_change_of_basis_matrix()
+            return H.transform(COB_matrix)
 
-    @property
-    def ancilla_spectrum(self):
-        """Eigenvalues and eigenvectors of the hamiltonian of the isolated ancilla."""
-        if self._ancilla_spectrum:
-            return self._ancilla_spectrum
-
-        else:
-            self._ancilla_spectrum = self._calc_ancilla_spectrum()
-            return self._ancilla_spectrum
-
-    def get_circuit_spectrum(self, order = "energy"):
+    def _calc_circuit_spectrum(self, order = "energy"):
         """Eigenvalues and eigenvectors of the full hamiltonian of the circuit.
         
         Args:
@@ -277,28 +307,20 @@ class Circuit:
             with the first mode being more significative.
         """
 
-        if not (self._en_circuit_spectrum and self._ex_circuit_spectrum):
-            self._en_circuit_spectrum = self.get_H().eigenstates()
-            self._ex_circuit_spectrum = self._reorder_circuit_excitation_spectrum()
-            
-        if order == "energy":
-            return self._en_circuit_spectrum
+        spectrum = self.circuit_spectrum_memory.get(self.circuit_parameters_value)
+        if not spectrum:
+            print("Calculating circuit spectrum...", end = ' ')
+            spectrum = self.hamiltonian.eigenstates()
+            print("Done!")
+        # else:
+        #     print("Circuit spectrum found in memory. Proceeding...")
 
-        elif order == "excitation":
-            return self._ex_circuit_spectrum    
+        self.circuit_spectrum_memory[self.circuit_parameters_value] = spectrum
+        if order == "excitation":
+            spectrum = self._reorder_circuit_excitation_spectrum()
 
-    @property
-    def COB_matrix(self):
-        """Matrix that transforms operators from Fock state basis to the
-        basis of eigenvectors of the system.
-        """
-        if self._COB_matrix:
-            return self._COB_matrix
-
-        else:
-            self._COB_matrix = self._calc_change_of_basis_matrix()
-            return self._COB_matrix
-
+        return spectrum  
+    
     def _reorder_circuit_excitation_spectrum(self):
         """The purpose of this method is to reorder the eigenvectors according to
         the number of excitations in each mode. Assumes the eigenvectors of the 
@@ -307,17 +329,17 @@ class Circuit:
         """
 
         # Gets eigenvectors of each individual mode
-        mode_eigenvec = [self.get_H().ptrace(i).eigenstates()[1] 
-                         for i in range(len(self.mode_freqs))]
+        mode_eigenvec = [self.hamiltonian.ptrace(i).eigenstates()[1] 
+                         for i in range(len(self.freqs))]
 
         # get evecs in the
-        evals, evecs = self._en_circuit_spectrum
+        evals, evecs = self.circuit_spectrum_memory.get(self.circuit_parameters_value)
 
         evecs_labeled = []
         for i in range(len(evecs)):
             label = ()
             # Find the number of excitations in each eigenvector
-            for mode in range(len(self.mode_freqs)):
+            for mode in range(len(self.freqs)):
                 indx = np.argmax([qt.metrics.fidelity(evecs[i].ptrace(mode), qt.ket2dm(x)) 
                                   for x in mode_eigenvec[mode]])
                 label += (indx,)
@@ -341,8 +363,24 @@ class Circuit:
             eigenvalues in Hz and evecs is the respective np.array of eigenvectors.
         """
 
-        evals_0, evecs_0 = self.ancilla.calculate_spectrum()
-        return clean_spectrum(evals_0, evecs_0)
+
+        spectrum = self.ancilla_spectrum_memory.get(self.circuit_parameters_value)
+        if not spectrum:
+            print("Calculating ancilla spectrum...", end = ' ')
+            Hl, Hnl = self.ancilla.calculate_ancilla_hamiltonian()
+            H = Hl + Hnl
+            evals_0, evecs_0 = H.eigenstates()
+            spectrum = clean_spectrum(evals_0, evecs_0)
+            print("Done!")
+
+        #else:
+            #print("Ancilla spectrum found in memory. Proceeding...")
+
+        # save results in memory
+        self.ancilla_spectrum_memory[self.circuit_parameters_value] = spectrum
+
+        return spectrum
+
 
     def get_eigenstate(self, exc):
         """Return the eigenstate of the full coupled circuit corresponding to the given
@@ -363,24 +401,24 @@ class Circuit:
         """
 
         # Get eigestates of linear modes
+        n_modes = len(self.freqs)
         eigenvectors_list = [
-            qt.basis(self.fock_trunc, exc.get(i, 0)) for i in range(self.n_modes)
+            qt.basis(self.fock_trunc, exc.get(i, 0)) for i in range(n_modes)
         ]
 
         # get ancilla spectrum
         ancilla_eigenvecs = self.ancilla_spectrum[1]
-        eigenvectors_list[self.ancilla_mode] = qt.Qobj(
-            ancilla_eigenvecs[exc.get(self.ancilla_mode, 0)]
+        eigenvectors_list[self.ancilla_index] = qt.Qobj(
+            ancilla_eigenvecs[exc.get(self.ancilla_index, 0)]
         )
         evec_guess = reduce(qt.tensor, eigenvectors_list)
-        print(evec_guess[:10])
+        
         # Return the eigenvector of the circuit spectrum that is closest to the guess.
         def distance(s2):
             return (evec_guess.dag() * s2[1]).norm()
 
-        evals, evecs = self.get_circuit_spectrum()
+        evals, evecs = self.calc_circuit_spectrum()
         eval, evec = max(zip(evals, evecs), key=distance)
-        print(evec[:10])
         return eval, evec
 
     def _calc_change_of_basis_matrix(self):
@@ -390,69 +428,6 @@ class Circuit:
         by ordering basis per excitation.
         """
 
-        _, evecs = self.get_circuit_spectrum(order = "excitation")
+        _, evecs = self.calc_circuit_spectrum(order = "excitation")
         COB_matrix = np.concatenate([np.array(x) for x in evecs], axis = 1).T
         return COB_matrix
-    
-
-class TunableCircuit:
-    def __init__(
-        self,
-        junction_type,
-        ljs_list,
-        freqs_list,
-        phi_rzpf_list,
-        p_list,
-        p_ref,
-        fock_trunc,
-    ):
-        """Defines a circuit builder dependent on a tunable parameter p. For each value of phi, should
-        receive a set of (Lj, freqs, phi_rzpf) which is used to build the circuit.
-        """
-
-        self.fock_trunc = fock_trunc
-        self.junction_type = junction_type
-        self.lj = self.interpolate(p_list, ljs_list)
-        self.freqs = self.interpolate(p_list, freqs_list)
-        self.phi_rzpf = self.interpolate(p_list, phi_rzpf_list)
-        self.p_list = p_list
-        self.p_ref = p_ref
-
-        self.n_modes = len(freqs)  # Assign one mode for each circ. element
-        self.ancilla = ancilla
-        self.phi_rzpf = phi_rzpf
-        self.mode_freqs = freqs
-        self.ancilla_mode = np.argmax(phi_rzpf)
-
-
-    def interpolate(self, p_list, y_list):
-        return
-        # return interp1d(p_list, ansys_fs[:,0].reshape(-1, 3)[:,2])
-
-    def build_reference_circuit(self, p):
-
-        # Get circuit and SQUID parameters
-        Lj = self.ljs(p)
-        Ej = 1 / (2 * np.pi * hbar * Lj) * (flux_quantum / 2 / np.pi) ** 2
-        freqs = self.freqs(p)
-        phi_rzpf = self.phi_rzpf(p)
-        # Assemble circuit
-        junction = self.junction_type(Ej)
-        ancilla = Ancilla(junction, freqs[np.argmax(phi_rzpf)], fock_trunc=self.fock_trunc)
-        self.ref_circuit = Circuit(ancilla, freqs, phi_rzpf)
-
-        return self.ref_circuit
-    
-    def build_circuit(self, p):
-
-        # Get circuit and SQUID parameters
-        Lj = self.ljs(p)
-        Ej = 1 / (2 * np.pi * hbar * Lj) * (flux_quantum / 2 / np.pi) ** 2
-        freqs = self.freqs(p)
-        phi_rzpf = self.phi_rzpf(p)
-        # Assemble circuit
-        junction = self.junction_type(Ej)
-        ancilla = Ancilla(junction, freqs[np.argmax(phi_rzpf)], fock_trunc=self.fock_trunc)
-        circuit = Circuit(ancilla, freqs, phi_rzpf)
-
-        return circuit
