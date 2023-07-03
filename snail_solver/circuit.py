@@ -417,7 +417,7 @@ class Circuit:
         def distance(s2):
             return (evec_guess.dag() * s2[1]).norm()
 
-        evals, evecs = self.calc_circuit_spectrum()
+        evals, evecs = self._calc_circuit_spectrum()
         eval, evec = max(zip(evals, evecs), key=distance)
         return eval, evec
 
@@ -428,6 +428,6 @@ class Circuit:
         by ordering basis per excitation.
         """
 
-        _, evecs = self.calc_circuit_spectrum(order = "excitation")
+        _, evecs = self._calc_circuit_spectrum(order = "excitation")
         COB_matrix = np.concatenate([np.array(x) for x in evecs], axis = 1).T
         return COB_matrix
